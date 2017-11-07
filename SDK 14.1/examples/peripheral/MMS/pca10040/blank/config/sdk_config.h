@@ -48,6 +48,13 @@
 #endif
 // <h> nRF_Drivers 
 
+// <q> PERIPHERAL_RESOURCE_SHARING_ENABLED  - nrf_drv_common - Peripheral drivers common module
+ 
+
+#ifndef PERIPHERAL_RESOURCE_SHARING_ENABLED
+#define PERIPHERAL_RESOURCE_SHARING_ENABLED 0
+#endif
+
 // <e> TWI_ENABLED - nrf_drv_twi - TWI/TWIM peripheral driver
 //==========================================================
 #ifndef TWI_ENABLED
@@ -133,6 +140,110 @@
 
 #ifndef TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED
 #define TWIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
+#endif
+
+// </e>
+
+// <e> SPI_ENABLED - nrf_drv_spi - SPI/SPIM peripheral driver
+//==========================================================
+#ifndef SPI_ENABLED
+#define SPI_ENABLED 1
+#endif
+// <o> SPI_DEFAULT_CONFIG_IRQ_PRIORITY  - Interrupt priority
+ 
+
+// <i> Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
+// <0=> 0 (highest) 
+// <1=> 1 
+// <2=> 2 
+// <3=> 3 
+// <4=> 4 
+// <5=> 5 
+// <6=> 6 
+// <7=> 7 
+
+#ifndef SPI_DEFAULT_CONFIG_IRQ_PRIORITY
+#define SPI_DEFAULT_CONFIG_IRQ_PRIORITY 7
+#endif
+
+// <o> SPI_DEFAULT_FREQUENCY  - SPI frequency
+ 
+// <33554432=> 125 kHz 
+// <67108864=> 250 kHz 
+// <134217728=> 500 kHz 
+// <268435456=> 1 MHz 
+// <536870912=> 2 MHz 
+// <1073741824=> 4 MHz 
+// <2147483648=> 8 MHz 
+
+#ifndef SPI_DEFAULT_FREQUENCY
+#define SPI_DEFAULT_FREQUENCY 1073741824
+#endif
+
+// <o> NRF_SPI_DRV_MISO_PULLUP_CFG  - MISO PIN pull-up configuration.
+ 
+// <0=> NRF_GPIO_PIN_NOPULL 
+// <1=> NRF_GPIO_PIN_PULLDOWN 
+// <3=> NRF_GPIO_PIN_PULLUP 
+
+#ifndef NRF_SPI_DRV_MISO_PULLUP_CFG
+#define NRF_SPI_DRV_MISO_PULLUP_CFG 0
+#endif
+
+// <e> SPI0_ENABLED - Enable SPI0 instance
+//==========================================================
+#ifndef SPI0_ENABLED
+#define SPI0_ENABLED 0
+#endif
+// <q> SPI0_USE_EASY_DMA  - Use EasyDMA
+ 
+
+#ifndef SPI0_USE_EASY_DMA
+#define SPI0_USE_EASY_DMA 1
+#endif
+
+// </e>
+
+// <e> SPI1_ENABLED - Enable SPI1 instance
+//==========================================================
+#ifndef SPI1_ENABLED
+#define SPI1_ENABLED 1
+#endif
+// <q> SPI1_USE_EASY_DMA  - Use EasyDMA
+ 
+
+#ifndef SPI1_USE_EASY_DMA
+#define SPI1_USE_EASY_DMA 1
+#endif
+
+// </e>
+
+// <e> SPI2_ENABLED - Enable SPI2 instance
+//==========================================================
+#ifndef SPI2_ENABLED
+#define SPI2_ENABLED 0
+#endif
+// <q> SPI2_USE_EASY_DMA  - Use EasyDMA
+ 
+
+#ifndef SPI2_USE_EASY_DMA
+#define SPI2_USE_EASY_DMA 1
+#endif
+
+// </e>
+
+// <q> SPIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED  - Enables nRF52 anomaly 109 workaround for SPIM.
+ 
+
+// <i> The workaround uses interrupts to wake up the CPU by catching
+// <i> a start event of zero-length transmission to start the clock. This 
+// <i> ensures that the DMA transfer will be executed without issues and
+// <i> that the proper transfer will be started. See more in the Errata 
+// <i> document or Anomaly 109 Addendum located at 
+// <i> https://infocenter.nordicsemi.com/
+
+#ifndef SPIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED
+#define SPIM_NRF52_ANOMALY_109_WORKAROUND_ENABLED 0
 #endif
 
 // </e>
@@ -301,13 +412,6 @@
 
 // </e>
 
-// <q> PERIPHERAL_RESOURCE_SHARING_ENABLED  - nrf_drv_common - Peripheral drivers common module
- 
-
-#ifndef PERIPHERAL_RESOURCE_SHARING_ENABLED
-#define PERIPHERAL_RESOURCE_SHARING_ENABLED 0
-#endif
-
 // <e> RTC_ENABLED - nrf_drv_rtc - RTC peripheral driver
 //==========================================================
 #ifndef RTC_ENABLED
@@ -378,6 +482,73 @@
 // <h> nRF_Libraries 
 
 //==========================================================
+// <q> APP_FIFO_ENABLED  - app_fifo - Software FIFO implementation
+ 
+
+#ifndef APP_FIFO_ENABLED
+#define APP_FIFO_ENABLED 1
+#endif
+
+// <e> APP_SDCARD_ENABLED - app_sdcard - SD/MMC card support using SPI
+//==========================================================
+#ifndef APP_SDCARD_ENABLED
+#define APP_SDCARD_ENABLED 1
+#endif
+// <o> APP_SDCARD_SPI_INSTANCE  - SPI instance used
+ 
+// <0=> 0 
+// <1=> 1 
+// <2=> 2 
+
+#ifndef APP_SDCARD_SPI_INSTANCE
+#define APP_SDCARD_SPI_INSTANCE 0
+#endif
+
+// <o> APP_SDCARD_FREQ_INIT  - SPI frequency
+ 
+// <33554432=> 125 kHz 
+// <67108864=> 250 kHz 
+// <134217728=> 500 kHz 
+// <268435456=> 1 MHz 
+// <536870912=> 2 MHz 
+// <1073741824=> 4 MHz 
+// <2147483648=> 8 MHz 
+
+#ifndef APP_SDCARD_FREQ_INIT
+#define APP_SDCARD_FREQ_INIT 67108864
+#endif
+
+// <o> APP_SDCARD_FREQ_DATA  - SPI frequency
+ 
+// <33554432=> 125 kHz 
+// <67108864=> 250 kHz 
+// <134217728=> 500 kHz 
+// <268435456=> 1 MHz 
+// <536870912=> 2 MHz 
+// <1073741824=> 4 MHz 
+// <2147483648=> 8 MHz 
+
+#ifndef APP_SDCARD_FREQ_DATA
+#define APP_SDCARD_FREQ_DATA 1073741824
+#endif
+
+// </e>
+
+// <e> APP_UART_ENABLED - app_uart - UART driver
+//==========================================================
+#ifndef APP_UART_ENABLED
+#define APP_UART_ENABLED 1
+#endif
+// <o> APP_UART_DRIVER_INSTANCE  - UART instance used
+ 
+// <0=> 0 
+
+#ifndef APP_UART_DRIVER_INSTANCE
+#define APP_UART_DRIVER_INSTANCE 0
+#endif
+
+// </e>
+
 // <e> APP_TIMER_ENABLED - app_timer - Application timer functionality
 //==========================================================
 #ifndef APP_TIMER_ENABLED
@@ -514,6 +685,13 @@
 
 // </e>
 
+// <q> NRF_FPRINTF_ENABLED  - nrf_fprintf - fprintf function.
+ 
+
+#ifndef NRF_FPRINTF_ENABLED
+#define NRF_FPRINTF_ENABLED 1
+#endif
+
 // <q> NRF_MEMOBJ_ENABLED  - nrf_memobj - Linked memory allocator module
  
 
@@ -534,13 +712,76 @@
 // <h> nRF_Log 
 
 //==========================================================
+// <e> NRF_LOG_BACKEND_RTT_ENABLED - nrf_log_backend_rtt - Log RTT backend
+//==========================================================
+#ifndef NRF_LOG_BACKEND_RTT_ENABLED
+#define NRF_LOG_BACKEND_RTT_ENABLED 1
+#endif
+// <o> NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE - Size of buffer for partially processed strings. 
+// <i> Size of the buffer is a trade-off between RAM usage and processing.
+// <i> if buffer is smaller then strings will often be fragmented.
+// <i> It is recommended to use size which will fit typical log and only the
+// <i> longer one will be fragmented.
+
+#ifndef NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE
+#define NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE 64
+#endif
+
+// </e>
+
+// <e> NRF_LOG_BACKEND_UART_ENABLED - nrf_log_backend_uart - Log UART backend
+//==========================================================
+#ifndef NRF_LOG_BACKEND_UART_ENABLED
+#define NRF_LOG_BACKEND_UART_ENABLED 1
+#endif
+// <o> NRF_LOG_BACKEND_UART_TX_PIN - UART TX pin 
+#ifndef NRF_LOG_BACKEND_UART_TX_PIN
+#define NRF_LOG_BACKEND_UART_TX_PIN 6
+#endif
+
+// <o> NRF_LOG_BACKEND_UART_BAUDRATE  - Default Baudrate
+ 
+// <323584=> 1200 baud 
+// <643072=> 2400 baud 
+// <1290240=> 4800 baud 
+// <2576384=> 9600 baud 
+// <3862528=> 14400 baud 
+// <5152768=> 19200 baud 
+// <7716864=> 28800 baud 
+// <10289152=> 38400 baud 
+// <15400960=> 57600 baud 
+// <20615168=> 76800 baud 
+// <30801920=> 115200 baud 
+// <61865984=> 230400 baud 
+// <67108864=> 250000 baud 
+// <121634816=> 460800 baud 
+// <251658240=> 921600 baud 
+// <268435456=> 1000000 baud 
+
+#ifndef NRF_LOG_BACKEND_UART_BAUDRATE
+#define NRF_LOG_BACKEND_UART_BAUDRATE 30801920
+#endif
+
+// <o> NRF_LOG_BACKEND_UART_TEMP_BUFFER_SIZE - Size of buffer for partially processed strings. 
+// <i> Size of the buffer is a trade-off between RAM usage and processing.
+// <i> if buffer is smaller then strings will often be fragmented.
+// <i> It is recommended to use size which will fit typical log and only the
+// <i> longer one will be fragmented.
+
+#ifndef NRF_LOG_BACKEND_UART_TEMP_BUFFER_SIZE
+#define NRF_LOG_BACKEND_UART_TEMP_BUFFER_SIZE 64
+#endif
+
+// </e>
+
+//==========================================================
 // <h> nrf_log - Logging
 
 //==========================================================
 // <e> NRF_LOG_ENABLED - Logging module for nRF5 SDK
 //==========================================================
 #ifndef NRF_LOG_ENABLED
-#define NRF_LOG_ENABLED 0
+#define NRF_LOG_ENABLED 1
 #endif
 // <e> NRF_LOG_USES_COLORS - If enabled then ANSI escape code for colors is prefixed to every string
 //==========================================================
@@ -615,7 +856,7 @@
 // <i> Log data is buffered and can be processed in idle.
 
 #ifndef NRF_LOG_DEFERRED
-#define NRF_LOG_DEFERRED 1
+#define NRF_LOG_DEFERRED 0
 #endif
 
 // <o> NRF_LOG_BUFSIZE  - Size of the buffer for storing logs (in bytes).
@@ -2614,6 +2855,56 @@
 
 // </h> 
 //==========================================================
+
+// </h> 
+//==========================================================
+
+// </h> 
+//==========================================================
+
+// <h> nRF_Segger_RTT 
+
+//==========================================================
+// <h> segger_rtt - SEGGER RTT
+
+//==========================================================
+// <o> SEGGER_RTT_CONFIG_BUFFER_SIZE_UP - Size of upstream buffer. 
+// <i> Note that either @ref NRF_LOG_BACKEND_RTT_OUTPUT_BUFFER_SIZE
+// <i> or this value is actually used. It depends on which one is bigger.
+
+#ifndef SEGGER_RTT_CONFIG_BUFFER_SIZE_UP
+#define SEGGER_RTT_CONFIG_BUFFER_SIZE_UP 512
+#endif
+
+// <o> SEGGER_RTT_CONFIG_MAX_NUM_UP_BUFFERS - Size of upstream buffer. 
+#ifndef SEGGER_RTT_CONFIG_MAX_NUM_UP_BUFFERS
+#define SEGGER_RTT_CONFIG_MAX_NUM_UP_BUFFERS 2
+#endif
+
+// <o> SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN - Size of upstream buffer. 
+#ifndef SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN
+#define SEGGER_RTT_CONFIG_BUFFER_SIZE_DOWN 16
+#endif
+
+// <o> SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS - Size of upstream buffer. 
+#ifndef SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS
+#define SEGGER_RTT_CONFIG_MAX_NUM_DOWN_BUFFERS 2
+#endif
+
+// <o> SEGGER_RTT_CONFIG_DEFAULT_MODE  - RTT behavior if the buffer is full.
+ 
+
+// <i> The following modes are supported:
+// <i> - SKIP  - Do not block, output nothing.
+// <i> - TRIM  - Do not block, output as much as fits.
+// <i> - BLOCK - Wait until there is space in the buffer.
+// <0=> SKIP 
+// <1=> TRIM 
+// <2=> BLOCK_IF_FIFO_FULL 
+
+#ifndef SEGGER_RTT_CONFIG_DEFAULT_MODE
+#define SEGGER_RTT_CONFIG_DEFAULT_MODE 0
+#endif
 
 // </h> 
 //==========================================================

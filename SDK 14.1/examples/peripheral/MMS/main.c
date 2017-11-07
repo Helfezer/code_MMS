@@ -60,9 +60,15 @@
 #include "sdk_errors.h"
 #include "app_error.h"
 #include "nrf_drv_rtc.h"
-//#include "nrf_drv_twi.h"
-//#include "nrf_delay.h"
 #include "my_lib_twi.h"
+
+#include "nrf.h"
+#include "ff.h"
+#include "diskio_blkdev.h"
+#include "nrf_block_dev_sdc.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
 
 
 #if LEDS_NUMBER <= 2
@@ -355,14 +361,17 @@ int main(void)
 {
 		
     ret_code_t err_code;
+		// Configure LED-pins as outputs
+		bsp_board_leds_init();
+		APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
+		NRF_LOG_DEFAULT_BACKENDS_INIT();
+		NRF_LOG_INFO("Projet MMS");
+	
 		twi_init();
-		TaskHandle_t  xTwiHandle;
+		//TaskHandle_t  xTwiHandle;
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
-
-    // Configure LED-pins as outputs
-		bsp_board_leds_init();
 	
 		nrf_gpio_cfg_output(25);
 		nrf_gpio_cfg_output(24);
