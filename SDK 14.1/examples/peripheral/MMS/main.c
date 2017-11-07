@@ -90,8 +90,6 @@
  * @brief Reference to LED0 toggling FreeRTOS task.
  */
 static TaskHandle_t  m_led_toggle_task_handle;
-static TaskHandle_t  m_twi_task_handle;
-//static TaskHandle_t  xTwiHandle;
 
 /**
  * @brief Semaphore set in RTC event
@@ -158,15 +156,6 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
  */
 
-static void twi_task_function(void * pvParameter)
-{
-	uint8_t buf[1] = {0x0F};
-	for( ;; )
-	{
-	nrf_drv_twi_tx(&m_twi, 0x20, &buf[0], 1, false);
-	nrf_delay_ms(500);
-	}
-}
 
 static void led_toggle_task_function (void * pvParameter)
 {
@@ -195,12 +184,10 @@ static void led_toggle_task_function (void * pvParameter)
 
 static void vTwiFunction (void *pvParameter)
 {
-		//int j = 0,init = 0,i = 0;	
+		int j = 0,init = 0,i = 0;	
 	  UNUSED_PARAMETER(pvParameter);
-	
-		for(;;);
 
-		/*//buffer for accelerometer values
+		//buffer for accelerometer values
 		uint8_t acc[6] = {0};
 		//buffer for gyrometer values
 		uint8_t gyr[6] = {0};
@@ -280,7 +267,6 @@ static void vTwiFunction (void *pvParameter)
 				//Temperature
 				imu_list[j].temp = (temp[0]<<8)|temp[1];
 				
-				printf("X=%d, X=%d X=%d X=%d X=%d X=%d X=%d X=%d X=%d X=%d", imu_list[j].acc_x, imu_list[j].acc_y, imu_list[j].acc_z, imu_list[j].gyr_x, imu_list[j].gyr_y, imu_list[j].gyr_z, imu_list[j].mag_x, imu_list[j].mag_y, imu_list[j].mag_z, imu_list[j].temp);
 				i = 0;
 				//increase the IMU index
 				
@@ -301,7 +287,7 @@ static void vTwiFunction (void *pvParameter)
 			{
 				i++;
 			}
-		}*/
+		}
 }
 /*******************************************************************************************************
 ***********************************************************************************************************
@@ -387,8 +373,7 @@ int main(void)
 
     /* Create task for LED0 blinking with priority set to 2 */
     UNUSED_VARIABLE(xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 2, &m_led_toggle_task_handle));
-		//UNUSED_VARIABLE(xTaskCreate( vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xTwiHandle )); 
-		UNUSED_VARIABLE(xTaskCreate(twi_task_function, "twi", configMINIMAL_STACK_SIZE + 200, NULL, 2, &m_twi_task_handle));
+		UNUSED_VARIABLE(xTaskCreate( vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xTwiHandle )); 
 	
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
