@@ -1,5 +1,27 @@
 #include "my_lib_twi.h"
 
+#include "nrf.h"
+#include "ff.h"
+#include "diskio_blkdev.h"
+#include "nrf_block_dev_sdc.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+
+/* initialize the pin which are needed to drive switch output */
+void init_switch_pins(void)
+{
+		/* Pins set as output */ 
+		nrf_gpio_cfg_output(SWITCH_A);
+		nrf_gpio_cfg_output(SWITCH_B);
+		nrf_gpio_cfg_output(SWITCH_C);
+		/* Pins set to low at the beginning */
+		nrf_gpio_pin_clear(SWITCH_A);
+		nrf_gpio_pin_clear(SWITCH_B);
+		nrf_gpio_pin_clear(SWITCH_C);
+}
+
+
 /* Function which initialize the MPU6050 */
 void init_MPU6050(nrf_drv_twi_t twi_instance)
 {
@@ -33,49 +55,49 @@ void switch_imu(int imu)
 	switch(imu)
 	{
 		case 0:
-			nrf_gpio_pin_clear(25);
-			nrf_gpio_pin_clear(24);
-			nrf_gpio_pin_clear(23);
+			nrf_gpio_pin_clear(SWITCH_A);
+			nrf_gpio_pin_clear(SWITCH_B);
+			nrf_gpio_pin_clear(SWITCH_C);
 			break;		
 		case 1:
-			nrf_gpio_pin_set(25);
-			nrf_gpio_pin_clear(24);
-			nrf_gpio_pin_clear(23);
+			nrf_gpio_pin_set(SWITCH_A);
+			nrf_gpio_pin_clear(SWITCH_B);
+			nrf_gpio_pin_clear(SWITCH_C);
 			break;
 		case 2:
-			nrf_gpio_pin_clear(25);
-			nrf_gpio_pin_set(24);
-			nrf_gpio_pin_clear(23);
+			nrf_gpio_pin_clear(SWITCH_A);
+			nrf_gpio_pin_set(SWITCH_B);
+			nrf_gpio_pin_clear(SWITCH_C);
 			break;
 		case 3:
-			nrf_gpio_pin_set(25);
-			nrf_gpio_pin_set(24);
-			nrf_gpio_pin_clear(23);
+			nrf_gpio_pin_set(SWITCH_A);
+			nrf_gpio_pin_set(SWITCH_B);
+			nrf_gpio_pin_clear(SWITCH_C);
 			break;
 		case 4:
-			nrf_gpio_pin_clear(25);
-			nrf_gpio_pin_clear(24);
-			nrf_gpio_pin_set(23);
+			nrf_gpio_pin_clear(SWITCH_A);
+			nrf_gpio_pin_clear(SWITCH_B);
+			nrf_gpio_pin_set(SWITCH_C);
 			break;
 		case 5:
-			nrf_gpio_pin_set(25);
-			nrf_gpio_pin_clear(24);
-			nrf_gpio_pin_set(23);
+			nrf_gpio_pin_set(SWITCH_A);
+			nrf_gpio_pin_clear(SWITCH_B);
+			nrf_gpio_pin_set(SWITCH_C);
 			break;
 		case 6:
-			nrf_gpio_pin_clear(25);
-			nrf_gpio_pin_set(24);
-			nrf_gpio_pin_set(23);
+			nrf_gpio_pin_clear(SWITCH_A);
+			nrf_gpio_pin_set(SWITCH_B);
+			nrf_gpio_pin_set(SWITCH_C);
 			break;
 		case 7:
-			nrf_gpio_pin_set(25);
-			nrf_gpio_pin_set(24);
-			nrf_gpio_pin_set(23);
+			nrf_gpio_pin_set(SWITCH_A);
+			nrf_gpio_pin_set(SWITCH_B);
+			nrf_gpio_pin_set(SWITCH_C);
 			break;
 		default:
-			nrf_gpio_pin_clear(25);
-			nrf_gpio_pin_clear(24);
-			nrf_gpio_pin_clear(23);
+			nrf_gpio_pin_clear(SWITCH_A);
+			nrf_gpio_pin_clear(SWITCH_B);
+			nrf_gpio_pin_clear(SWITCH_C);
 			break;
 	}
 	

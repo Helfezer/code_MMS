@@ -5,11 +5,17 @@
 #include "nrf_gpio.h"
 
 /* delay between TWI trames */
-#define MPU_DELAY					100
+#define MPU_DELAY						100
+#define MPU_DELAY_US				80
+
+/* Pin for swtich address */
+#define SWITCH_A 28
+#define SWITCH_B 29
+#define SWITCH_C 30
 
 /*Common addresses definition for accelereomter. */
 #define MPU_WHO_AM_I					0x75
-#define MPU_ADDR							0x69
+#define MPU_ADDR							0x68
 #define HMC_ADDR							0x1E
 
 /* Switch macros */
@@ -60,7 +66,8 @@ typedef struct
 	int16_t mag_x, mag_y, mag_z;
 }IMU;
 
+void init_switch_pins(void);
 void init_MPU6050(nrf_drv_twi_t twi_instance);
 void init_HMC5883(nrf_drv_twi_t twi_instance);
-
+/* getting all info from the IMUs */ 
 void switch_imu(int imu);

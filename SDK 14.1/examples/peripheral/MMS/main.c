@@ -123,7 +123,6 @@ static volatile bool m_set_mode_done = false;
  */
 static nrf_drv_twi_t const m_twi = NRF_DRV_TWI_INSTANCE(0);
 
-
 /* MPU accelerometer register tab */
 uint8_t mpu_acc_reg[NB_ACC_REG_MPU] = {REG_ACC_XH, REG_ACC_XL, REG_ACC_YH, REG_ACC_YL, REG_ACC_ZH, REG_ACC_ZL};
 
@@ -189,11 +188,9 @@ static void led_toggle_task_function (void * pvParameter)
 }
 
 static void vTwiFunction (void *pvParameter)
-{
-		int j = 0,init = 0,i = 0;	
+{	
 	  UNUSED_PARAMETER(pvParameter);
-
-		//buffer for accelerometer values
+			//buffer for accelerometer values
 		uint8_t acc[6] = {0};
 		//buffer for gyrometer values
 		uint8_t gyr[6] = {0};
@@ -202,56 +199,69 @@ static void vTwiFunction (void *pvParameter)
 		//buffer for temperature values
 		uint8_t temp[2] = {0};
 		
+		int j = 0;
+		int init = 0;
+		int i = 0;
+		
 		for(;;)
 		{
 			if(init != NB_IMU)
 			{
+				//NRF_LOG_INFO("initialising IMU n_%d", init);
 				//Init MPU6050 and HMC5883
+				switch_imu(init);
 				init_MPU6050(m_twi);
-				nrf_delay_ms(50);
+				nrf_delay_ms(MPU_DELAY);
 				init_HMC5883(m_twi);
-				nrf_delay_ms(50);
+				nrf_delay_ms(MPU_DELAY);
 				init ++;
+				switch_imu(j);				
 			}
 // Get values from accelerometer **********************************************
-// Point at register			
+// Point at register
+			//NRF_LOG_INFO("Reading accelerometer n_%d", i);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);
-			nrf_delay_us(80);
+			nrf_delay_us(MPU_DELAY_US);
 			// read register
-		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);
-			nrf_delay_us(80);			
-		
+			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);
+			nrf_delay_us(MPU_DELAY_US);
+			
+			
 // Get values from gyrometer **********************************************
 // Point at register
+			//NRF_LOG_INFO("Reading gyrometer n_%d", i);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);
-			nrf_delay_us(80);
+			nrf_delay_us(MPU_DELAY_US);
 			// read register	
-		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);
-			nrf_delay_us(80);
+			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);
+			nrf_delay_us(MPU_DELAY_US);
 			
 			
 // Get values from magnetomter **********************************************
 // Point at register
+			//NRF_LOG_INFO("Reading magnetometer n_%d", i);
 			nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);
-			nrf_delay_us(80);
+			nrf_delay_us(MPU_DELAY_US);
 			// read register	
-		nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);
-			nrf_delay_us(80);
-		
+			nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);
+			nrf_delay_us(MPU_DELAY_US);
+	
 		
 // Get values from temperature  **********************************************
 // Point at register
-		if ( i < 3)
+		if ( i < 2)
 		{
+			//NRF_LOG_INFO("Reading temperature n_%d", i);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);
-			nrf_delay_us(80);
+			nrf_delay_us(MPU_DELAY_US);
 			// read register
 			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &temp[i], 1);
-			nrf_delay_us(80);
+			nrf_delay_us(MPU_DELAY_US);
 			i++;
 		}
 		else if (i == 5)
 			{
+				//NRF_LOG_INFO("Writing datas to imu struct n_%d", j);
 				// Accelerometer X
 				imu_list[j].acc_x = (acc[0]<<8)|acc[1];
 						// Accelerometer Y
@@ -274,25 +284,38 @@ static void vTwiFunction (void *pvParameter)
 				imu_list[j].temp = (temp[0]<<8)|temp[1];
 				
 				i = 0;
-				//increase the IMU index
+				
+				NRF_LOG_INFO("IMU n_%d data:", j)
+				NRF_LOG_INFO("	acc_x:%d", imu_list[j].acc_x);
+				NRF_LOG_INFO("	acc_y:%d", imu_list[j].acc_y);
+				NRF_LOG_INFO("	acc_z:%d", imu_list[j].acc_z);
+				NRF_LOG_INFO("	gyr_x:%d", imu_list[j].gyr_x);
+				NRF_LOG_INFO("	gyr_y:%d", imu_list[j].gyr_y);
+				NRF_LOG_INFO("	gyr_z:%d", imu_list[j].gyr_z);
+				NRF_LOG_INFO("	mag_x:%d", imu_list[j].mag_x);
+				NRF_LOG_INFO("	mag_y:%d", imu_list[j].mag_y);
+				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
+				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
 				
 				if(j == NB_IMU-1)
 				{
 					j = 0;					
-					nrf_delay_ms(200);
+					nrf_delay_ms(MPU_DELAY);
 				}
 				else
 				{
-					nrf_delay_ms(200);
+					nrf_delay_ms(MPU_DELAY);
 					
 					j++;					
 				}
+				NRF_LOG_INFO("swithing to imu_%d", j);
 				switch_imu(j);
+				
 			}
 			else
 			{
-				i++;
-			}
+				i++;				
+			}	
 		}
 }
 /*******************************************************************************************************
@@ -340,7 +363,7 @@ void twi_init (void)
     const nrf_drv_twi_config_t twi_lm75b_config = {
        .scl                = ARDUINO_SCL_PIN,
        .sda                = ARDUINO_SDA_PIN,
-       .frequency          = NRF_TWI_FREQ_100K,
+       .frequency          = NRF_TWI_FREQ_400K,
        .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
        .clear_bus_init     = false
     };
@@ -368,17 +391,12 @@ int main(void)
 		NRF_LOG_INFO("Projet MMS");
 	
 		twi_init();
-		//TaskHandle_t  xTwiHandle;
+		TaskHandle_t  xTwiHandle;
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
-	
-		nrf_gpio_cfg_output(25);
-		nrf_gpio_cfg_output(24);
-		nrf_gpio_cfg_output(23);
-		nrf_gpio_pin_clear(25);
-		nrf_gpio_pin_clear(24);
-		nrf_gpio_pin_clear(23);
+		
+		init_switch_pins();
 
     /* Create task for LED0 blinking with priority set to 2 */
     UNUSED_VARIABLE(xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 2, &m_led_toggle_task_handle));
@@ -397,7 +415,6 @@ int main(void)
          * in vTaskStartScheduler function. */
     }
 }
-
 /**
  * @}
  */
