@@ -71,3 +71,4 @@ void init_MPU6050(nrf_drv_twi_t twi_instance);
 void init_HMC5883(nrf_drv_twi_t twi_instance);
 /* getting all info from the IMUs */ 
 void switch_imu(int imu);
+void init(void);
