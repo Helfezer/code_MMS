@@ -60,12 +60,10 @@
 #include "sdk_errors.h"
 #include "app_error.h"
 #include "nrf_drv_rtc.h"
-#include "my_lib_twi.h"
 
-#include "nrf.h"
-#include "ff.h"
-#include "diskio_blkdev.h"
-#include "nrf_block_dev_sdc.h"
+#include "my_lib_twi.h"
+#include "SDcard.h"
+
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
@@ -74,6 +72,8 @@
 
 
 
+#define FILE_NAME "MMS.TXT"
+uint8_t failed;
 
 #if LEDS_NUMBER <= 2
 #error "Board is not equipped with enough amount of LEDs"
@@ -99,7 +99,7 @@
 /**
  * @brief Reference to LED0 toggling FreeRTOS task.
  */
-static TaskHandle_t  m_led_toggle_task_handle;
+//static TaskHandle_t  m_led_toggle_task_handle;
 
 /**
  * @brief Reference to Twi IMU reading task.
@@ -115,6 +115,11 @@ TaskHandle_t  xQHandleRead;
  * @brief Reference to Writing into the Queue task.
  */
 TaskHandle_t  xQHandleWrite;
+
+/**
+ * @brief Reference to Writing into the SD task.
+ */
+TaskHandle_t  xSDHandle;
 
 /**
  * @brief Reference to the Queue where the datas are stocked
@@ -151,7 +156,7 @@ static volatile bool m_set_mode_done = false;
  *
  * Instance of the TWI
  */
-static nrf_drv_twi_t const m_twi = NRF_DRV_TWI_INSTANCE(0);
+static nrf_drv_twi_t const m_twi = NRF_DRV_TWI_INSTANCE(1);
 
 /* MPU accelerometer register tab */
 uint8_t mpu_acc_reg[NB_ACC_REG_MPU] = {REG_ACC_XH, REG_ACC_XL, REG_ACC_YH, REG_ACC_YL, REG_ACC_ZH, REG_ACC_ZL};
@@ -432,6 +437,48 @@ void vQueueWrite(void* pvParameter)
 ********************************************************************************************************
 *******************************************************************************************************/
 
+static void vSDCardFunction (void *pvParameter)
+{
+		SemaphoreHandle_t xSemaphore;
+		xSemaphore = xSemaphoreCreateMutex();
+		//static DIR dir;
+		//static FILINFO fno;
+		static FIL file;
+		FRESULT ff_result;
+		uint32_t bytes_written;
+		//uint32_t bytes_to_read;
+		char* s = "test d'ecriture";
+	
+		for(;;)
+		{
+			if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+			{
+				NRF_LOG_INFO ("Opening file: \n");
+				ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
+				NRF_LOG_INFO("Error code: %d\r\n", ff_result);
+				if (ff_result != FR_OK)
+				{
+					NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
+				}else{
+					ff_result = f_write(&file, s, strlen(s), (UINT *) &bytes_written);
+					if (ff_result != FR_OK)
+					{
+						NRF_LOG_INFO("Write failed\r\n.");
+					}
+					else
+					{
+						NRF_LOG_INFO("%d bytes written.", bytes_written);
+					}
+				}
+				ff_result = f_close(&file);
+				xSemaphoreGive( xSemaphore );
+			}
+		}
+}
+/*******************************************************************************************************
+***********************************************************************************************************
+*************************************************************************************************************/
+
 /**
  * @brief TWI events handler.
  */
@@ -509,6 +556,7 @@ void init_imu(void)
 
 void init()
 {
+	SDcard_init();
 	init_switch_pins();
 	init_imu();	
 }
@@ -524,10 +572,12 @@ int main(void)
     ret_code_t err_code;
 		// Configure LED-pins as outputs
 		bsp_board_leds_init();
+	
+		//init debug
 		APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
 		NRF_LOG_DEFAULT_BACKENDS_INIT();
 		NRF_LOG_INFO("Projet MMS");
-	
+		
 		twi_init();
 		init();
 	
@@ -552,7 +602,7 @@ int main(void)
 		*/
 		
 		/* Task reading IMUs */
-		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xTwiHandle );
+		/*xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xTwiHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("twi task created");
@@ -571,7 +621,7 @@ int main(void)
 		else
 		{
 			NRF_LOG_INFO("Unable to create queue read task");
-		}
+		}*/
 		/*
 		xReturned = xTaskCreate(vQueueWrite, "Q2", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xQHandleWrite );
 		if (xReturned == pdPASS)
@@ -583,6 +633,15 @@ int main(void)
 			NRF_LOG_INFO("Unable to create queue write task");
 		}
 		*/
+		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, NULL, 1, &xSDHandle );
+		if (xReturned == pdPASS)
+		{
+			NRF_LOG_INFO("SD task write created");
+		}
+		else
+		{
+			NRF_LOG_INFO("Unable to create SD task");
+		}
 	
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
@@ -592,6 +651,7 @@ int main(void)
 
     while (true)
     {
+				//_WFE();
         ASSERT(false);
         /* FreeRTOS should not be here... FreeRTOS goes back to the start of stack
          * in vTaskStartScheduler function. */

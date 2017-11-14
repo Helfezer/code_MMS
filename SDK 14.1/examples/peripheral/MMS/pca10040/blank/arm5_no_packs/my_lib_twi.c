@@ -1,13 +1,5 @@
 #include "my_lib_twi.h"
 
-#include "nrf.h"
-#include "ff.h"
-#include "diskio_blkdev.h"
-#include "nrf_block_dev_sdc.h"
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
-
 /* initialize the pin which are needed to drive switch output */
 void init_switch_pins(void)
 {
