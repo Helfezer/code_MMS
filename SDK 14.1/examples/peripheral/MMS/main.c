@@ -102,6 +102,26 @@
 static TaskHandle_t  m_led_toggle_task_handle;
 
 /**
+ * @brief Reference to Twi IMU reading task.
+ */
+TaskHandle_t  xTwiHandle;
+
+/**
+ * @brief Reference to Reading the Queue task.
+ */
+TaskHandle_t  xQHandleRead;
+
+/**
+ * @brief Reference to Writing into the Queue task.
+ */
+TaskHandle_t  xQHandleWrite;
+
+/**
+ * @brief Reference to the Queue where the datas are stocked
+ */
+QueueHandle_t xQueue;
+
+/**
  * @brief Semaphore set in RTC event
  */
 static SemaphoreHandle_t m_led_semaphore;
@@ -125,6 +145,7 @@ static nrf_drv_rtc_t const m_rtc = NRF_DRV_RTC_INSTANCE(BLINK_RTC);
 
 static volatile bool m_xfer_done = true;
 static volatile bool m_set_mode_done = false;
+
 /**
  * @brief TWI instance
  *
@@ -144,7 +165,19 @@ uint8_t mpu_temp_reg[NB_TEMP_REG_MPU] = {REG_TEMP_H, REG_TEMP_L};
 /* HMC register tab */ 
 uint8_t hmc_reg[NB_REG_HMC] = {HMC_XH, HMC_XL, HMC_YH, HMC_YL, HMC_ZH, HMC_ZL};
 
+/**
+ * @brief vTwiFunction prototype
+ *
+ * Prototype of the function reading all IMUs
+ */
+void vTwiFunction (void *pvParameter);
 
+/**
+ * @brief vQueueRead prototype
+ *
+ * Prototype of the function for reading all IMUs datas
+ */
+void vQueueRead(void* pvParameter);
 
 
 static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
@@ -170,8 +203,6 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
  *
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
  */
-
-
 static void led_toggle_task_function (void * pvParameter)
 {
     ret_code_t err_code;	
@@ -204,32 +235,46 @@ void vQueueRead(void* pvParameter)
 		//UNUSED_PARAMETER(pvParameter);
 		uint16_t BufferReceive = 0;
 		BaseType_t xReadResult;
-		const TickType_t xDelay = 100;
+		BaseType_t QueueItems;
+		const TickType_t xDelay = 50;
 	
 		for ( ;; )
 	{
 		// wait for the notfy from twifunction
 		ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
-			/* Read values from the queue */
-		xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);
-		if (xReadResult == pdTRUE)
+		/* Read values from the queue */
+		
+		QueueItems = uxQueueMessagesWaiting(xQueue);
+		NRF_LOG_INFO("	Queue Items:%d", QueueItems);
+		while(QueueItems > 0)
 		{
-			NRF_LOG_INFO("	valeur recue:%d", BufferReceive);
-		}
-		else
-		{
-			NRF_LOG_INFO("Erreur lecture");
-		}
-			vTaskDelay(xDelay);
+			xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
+			if (xReadResult == pdTRUE)
+			{
+				NRF_LOG_INFO("	valeur recue:%d", BufferReceive);
+			}
+			else
+			{
+				NRF_LOG_INFO("Erreur lecture");
+			}
+			QueueItems = uxQueueMessagesWaiting(xQueue);
+			NRF_LOG_INFO("	Queue Items:%d", QueueItems);
+		}		
+		vTaskDelay(xDelay);
 	}		
 }	
 
-static void vTwiFunction (void *pvParameter)
-{	
+/**
+ * @brief Twi IMUs reading task entry function.
+ *
+ * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ */
+void vTwiFunction (void *pvParameter)
+{		
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
-		const TickType_t xDelay = 100;
+		const TickType_t xDelay = 200;
 		//UNUSED_PARAMETER(pvParameter);		
-			//buffer for accelerometer values
+		//buffer for accelerometer values
 		uint8_t acc[6] = {0};
 		//buffer for gyrometer values
 		uint8_t gyr[6] = {0};
@@ -242,13 +287,12 @@ static void vTwiFunction (void *pvParameter)
 		
 		int j = 0; //imu id index
 		int i = 0; //imu register id
-		//int queue_cpt = 0; //counter for writing in the queue
 		
 		for(;;)
 		{
 // Get values from accelerometer **********************************************
 // Point at register
-			//NRF_LOG_INFO("Reading accelerometer n_%d", i);
+			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);
 			nrf_delay_us(MPU_DELAY_US);
@@ -260,7 +304,7 @@ static void vTwiFunction (void *pvParameter)
 			
 // Get values from gyrometer **********************************************
 // Point at register
-			//NRF_LOG_INFO("Reading gyrometer n_%d", i);
+			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);
 			nrf_delay_us(MPU_DELAY_US);
@@ -272,7 +316,7 @@ static void vTwiFunction (void *pvParameter)
 			
 // Get values from magnetomter **********************************************
 // Point at register
-			//NRF_LOG_INFO("Reading magnetometer n_%d", i);
+			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);
 			nrf_delay_us(MPU_DELAY_US);
@@ -286,7 +330,7 @@ static void vTwiFunction (void *pvParameter)
 // Point at register
 		if ( i < 2)
 		{
-			//NRF_LOG_INFO("Reading temperature n_%d", i);
+			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);
 			nrf_delay_us(MPU_DELAY_US);
@@ -298,50 +342,37 @@ static void vTwiFunction (void *pvParameter)
 		}
 		else if (i == 5)
 			{
-				//NRF_LOG_INFO("Writing datas to imu struct n_%d", j);
 				// Accelerometer X
-				imu_list[j].acc_x = (acc[0]<<8)|acc[1];
+				imu_list[j].acc_x = (acc[0]<<8)|acc[1]; 
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_x, ( TickType_t ) 10);
 				NRF_LOG_INFO("	valeur envoyee:%d", imu_list[j].acc_x );
 				// Accelerometer Y
 				imu_list[j].acc_y = (acc[2]<<8)|acc[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_y, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Accelerometer Z
 				imu_list[j].acc_z = (acc[4]<<8)|acc[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_z, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Gyrometer X
 				imu_list[j].gyr_x = (gyr[0]<<8)|gyr[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_x, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Gyrometer Y
 				imu_list[j].gyr_y = (gyr[2]<<8)|gyr[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_y, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Gyrometer Z
 				imu_list[j].gyr_z = (gyr[4]<<8)|gyr[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_z, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Magnetometer X
 				imu_list[j].mag_x = (mag[0]<<8)|mag[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_x, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Magnetometer Z
 				imu_list[j].mag_y = (mag[2]<<8)|mag[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_y, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				// Magnetometer Y
 				imu_list[j].mag_z = (mag[4]<<8)|mag[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_z, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 				//Temperature
 				imu_list[j].temp = (temp[0]<<8)|temp[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].temp, ( TickType_t ) 10);
-				//NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
-				
-				// Send notify to QueueRead
-				xTaskNotifyGive(vQueueRead);
 				
 				i = 0;
 				
@@ -357,7 +388,8 @@ static void vTwiFunction (void *pvParameter)
 				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
 				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
 				
-				//xQueueSendToBack(xQueue, (void*) imu_list[j].temp, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
 				
 				if(j == NB_IMU-1)
 				{
@@ -397,10 +429,8 @@ void vQueueWrite(void* pvParameter)
 
 
 /*******************************************************************************************************
-***********************************************************************************************************
-*************************************************************************************************************/
-
-
+********************************************************************************************************
+*******************************************************************************************************/
 
 /**
  * @brief TWI events handler.
@@ -453,6 +483,9 @@ void twi_init (void)
     nrf_drv_twi_enable(&m_twi);
 }
 
+/**
+ * @brief Initialization of all IMUs registers .
+ */
 void init_imu(void)
 {
 		int imu_id = 0;
@@ -470,10 +503,10 @@ void init_imu(void)
 			}
 }
 
-
 /*******************************************************************************************************
-***********************************************************************************************************
-*************************************************************************************************************/
+********************************************************************************************************
+********************************************************************************************************/
+
 void init()
 {
 	init_switch_pins();
@@ -481,15 +514,11 @@ void init()
 }
 
 int main(void)
-{		
-		TaskHandle_t  xTwiHandle;
-		
-		QueueHandle_t xQueue;
-		TaskHandle_t  xQHandleRead;
-		TaskHandle_t  xQHandleWrite;
+{				
 		BaseType_t xReturned;
 		// creating twi mutex 
 		m_twi_mutex = xSemaphoreCreateMutex();
+		
 	  ASSERT(NULL != m_twi_mutex);
 		
     ret_code_t err_code;
@@ -500,6 +529,8 @@ int main(void)
 		NRF_LOG_INFO("Projet MMS");
 	
 		twi_init();
+		init();
+	
 		xQueue = xQueueCreate(10, sizeof(uint16_t));
 	
     /* Initialize clock driver for better time accuracy in FREERTOS */
@@ -508,8 +539,7 @@ int main(void)
 		
 		init_switch_pins();
 
-    /* Create task for LED0 blinking with priority set to 2 */
-    
+    /* Create task for LED0 blinking with priority set to 2 */    
 		/*xReturned = xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 1, &m_led_toggle_task_handle);
 		if (xReturned == pdPASS)
 		{
@@ -520,6 +550,7 @@ int main(void)
 			NRF_LOG_INFO("Unable to create led task");
 		}
 		*/
+		
 		/* Task reading IMUs */
 		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xTwiHandle );
 		if (xReturned == pdPASS)
