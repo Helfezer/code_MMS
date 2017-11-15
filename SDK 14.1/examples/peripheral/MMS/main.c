@@ -252,22 +252,23 @@ void vQueueRead(void* pvParameter)
 		
 		QueueItems = uxQueueMessagesWaiting(xQueue);
 		NRF_LOG_INFO("	Queue Items:%d", QueueItems);
-		while(QueueItems > 0)
+		
+		xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
+		if (xReadResult == pdTRUE)
 		{
-			xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
-			if (xReadResult == pdTRUE)
-			{
-				NRF_LOG_INFO("	valeur recue:%d", BufferReceive);
-			}
-			else
-			{
-				NRF_LOG_INFO("Erreur lecture");
-			}
-			QueueItems = uxQueueMessagesWaiting(xQueue);
-			NRF_LOG_INFO("	Queue Items:%d", QueueItems);
-		}		
+			NRF_LOG_INFO("	valeur recue:%d", BufferReceive);
+		}
+		else
+		{
+			NRF_LOG_INFO("Erreur lecture");
+		}
+		QueueItems = uxQueueMessagesWaiting(xQueue);
+		NRF_LOG_INFO("	Queue Items:%d", QueueItems);
+		}
+		//xTaskNotifyGive(xTwiHandle);
 		vTaskDelay(xDelay);
-	}		
+		// Send notify to unlock TwiFunction function
+	
 }	
 
 /**
@@ -278,7 +279,7 @@ void vQueueRead(void* pvParameter)
 void vTwiFunction (void *pvParameter)
 {		
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
-		const TickType_t xDelay = 200;
+		const TickType_t xDelay = 100;
 		//UNUSED_PARAMETER(pvParameter);		
 		//buffer for accelerometer values
 		uint8_t acc[6] = {0};
@@ -352,33 +353,82 @@ void vTwiFunction (void *pvParameter)
 				imu_list[j].acc_x = (acc[0]<<8)|acc[1]; 
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_x, ( TickType_t ) 10);
 				NRF_LOG_INFO("	valeur envoyee:%d", imu_list[j].acc_x );
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Accelerometer Y
 				imu_list[j].acc_y = (acc[2]<<8)|acc[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_y, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Accelerometer Z
 				imu_list[j].acc_z = (acc[4]<<8)|acc[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].acc_z, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Gyrometer X
 				imu_list[j].gyr_x = (gyr[0]<<8)|gyr[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_x, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Gyrometer Y
 				imu_list[j].gyr_y = (gyr[2]<<8)|gyr[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_y, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Gyrometer Z
 				imu_list[j].gyr_z = (gyr[4]<<8)|gyr[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].gyr_z, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Magnetometer X
 				imu_list[j].mag_x = (mag[0]<<8)|mag[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_x, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Magnetometer Z
 				imu_list[j].mag_y = (mag[2]<<8)|mag[3];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_y, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				// Magnetometer Y
 				imu_list[j].mag_z = (mag[4]<<8)|mag[5];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].mag_z, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				
 				//Temperature
 				imu_list[j].temp = (temp[0]<<8)|temp[1];
 				xQueueSendToBack(xQueue, (void*) &imu_list[j].temp, ( TickType_t ) 10);
+				// Send notify to unlock QueueRead function
+				xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 				
 				i = 0;
 				
@@ -395,7 +445,9 @@ void vTwiFunction (void *pvParameter)
 				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
 				
 				// Send notify to unlock QueueRead function
-				xTaskNotifyGive(xQHandleRead);
+				//xTaskNotifyGive(xQHandleRead);
+				// wait for the notify from read function
+				//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 				
 				if(j == NB_IMU-1)
 				{
@@ -419,16 +471,17 @@ void vTwiFunction (void *pvParameter)
 
 void vQueueWrite(void* pvParameter)
 {		
-		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
+		QueueHandle_t xQueue2 = (QueueHandle_t) pvParameter;
 		//UNUSED_PARAMETER(pvParameter);
 		uint16_t Cpt = 70;
 		const TickType_t xDelay = 200;
 	for ( ;; )
 	{
 			// Write values to the queue 
-		xQueueSendToBack(xQueue, (void*) &Cpt, ( TickType_t ) 10);
+		xQueueSendToBack(xQueue2, (void*) &Cpt, ( TickType_t ) 10);
 		NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
 		Cpt ++;
+		xTaskNotifyGive(xSDHandle);
 		vTaskDelay(xDelay);
 
 	}		
@@ -441,7 +494,7 @@ void vQueueWrite(void* pvParameter)
 
 static void vSDCardFunction (void *pvParameter)
 {
-		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
+		QueueHandle_t xQueue2 = (QueueHandle_t) pvParameter;
 		/*SemaphoreHandle_t xSemaphore;
 		xSemaphore = xSemaphoreCreateMutex();*/
 		//UNUSED_PARAMETER(pvParameter);
@@ -456,6 +509,7 @@ static void vSDCardFunction (void *pvParameter)
 		int n ;
 		for ( ;; )
 	{
+		ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 		NRF_LOG_INFO ("Opening file: \n");
 		ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
 		NRF_LOG_INFO("Error code: %d\r\n", ff_result);
@@ -463,10 +517,10 @@ static void vSDCardFunction (void *pvParameter)
 		{
 			NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
 		}else{
-			xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
+			xReadResult = xQueueReceive(xQueue2, &BufferReceive, (TickType_t) 10);		
 			if (xReadResult == pdTRUE)
 			{
-				n = sprintf(s,"%d",BufferReceive);
+				n = sprintf(s,"%x",BufferReceive);
 				NRF_LOG_INFO("[%s] de %d -- %d \n", s, n,BufferReceive);
 					ff_result = f_write(&file, s, n, (UINT *) &bytes_written);
 					if (ff_result != FR_OK)
@@ -594,7 +648,7 @@ int main(void)
 		init();
 	
 		xQueue = xQueueCreate(10, sizeof(uint16_t));
-		//xQueue2 = xQueueCreate(10, sizeof(uint16_t));
+		xQueue2 = xQueueCreate(10, sizeof(uint16_t));
 	
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
@@ -615,7 +669,8 @@ int main(void)
 		*/
 		
 		/* Task reading IMUs */
-		/*xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xTwiHandle );
+		
+		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xTwiHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("twi task created");
@@ -626,7 +681,7 @@ int main(void)
 		}
 		// task that read the queue 
 		
-		xReturned = xTaskCreate(vQueueRead, "Q1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xQHandleRead );
+		xReturned = xTaskCreate(vQueueRead, "Q1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 4, &xQHandleRead );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Queue Read task created");
@@ -634,8 +689,8 @@ int main(void)
 		else
 		{
 			NRF_LOG_INFO("Unable to create queue read task");
-		}*/
-		xReturned = xTaskCreate(vQueueWrite, "Q2", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 2, &xQHandleWrite );
+		}
+		xReturned = xTaskCreate(vQueueWrite, "Q2", configMINIMAL_STACK_SIZE + 200, (void*) xQueue2, 2, &xQHandleWrite );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Queue task write created");
@@ -644,7 +699,8 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create queue write task");
 		}
-		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xSDHandle );
+		
+		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue2, 1, &xSDHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("SD task write created");
@@ -653,7 +709,7 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create SD task");
 		}
-	
+		
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 

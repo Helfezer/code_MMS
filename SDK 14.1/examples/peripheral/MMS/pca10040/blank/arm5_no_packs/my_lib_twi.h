@@ -23,7 +23,7 @@
 #define HMC_ADDR							0x1E
 
 /* Switch macros */
-#define NB_IMU 2
+#define NB_IMU 1
 
 /* MPU registers */
 #define NB_ACC_REG_MPU 6
