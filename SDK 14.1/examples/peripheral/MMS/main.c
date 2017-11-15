@@ -125,6 +125,7 @@ TaskHandle_t  xSDHandle;
  * @brief Reference to the Queue where the datas are stocked
  */
 QueueHandle_t xQueue;
+QueueHandle_t xQueue2;
 
 /**
  * @brief Semaphore set in RTC event
@@ -420,15 +421,16 @@ void vQueueWrite(void* pvParameter)
 {		
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
 		//UNUSED_PARAMETER(pvParameter);
-		uint16_t Cpt = 0;
+		uint16_t Cpt = 70;
 		const TickType_t xDelay = 200;
 	for ( ;; )
 	{
 			// Write values to the queue 
 		xQueueSendToBack(xQueue, (void*) &Cpt, ( TickType_t ) 10);
 		NRF_LOG_INFO("	valeur envoyee:%d", Cpt);
-		vTaskDelay(xDelay);
 		Cpt ++;
+		vTaskDelay(xDelay);
+
 	}		
 }	
 
@@ -439,28 +441,34 @@ void vQueueWrite(void* pvParameter)
 
 static void vSDCardFunction (void *pvParameter)
 {
-		SemaphoreHandle_t xSemaphore;
-		xSemaphore = xSemaphoreCreateMutex();
-		//static DIR dir;
-		//static FILINFO fno;
+		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
+		/*SemaphoreHandle_t xSemaphore;
+		xSemaphore = xSemaphoreCreateMutex();*/
+		//UNUSED_PARAMETER(pvParameter);
+		uint16_t BufferReceive = 0;
+		BaseType_t xReadResult;
+		//BaseType_t QueueItems;
+		const TickType_t xDelay = 50;		
 		static FIL file;
 		FRESULT ff_result;
 		uint32_t bytes_written;
-		//uint32_t bytes_to_read;
-		char* s = "test d'ecriture";
-	
-		for(;;)
+		char s[50];
+		int n ;
+		for ( ;; )
+	{
+		NRF_LOG_INFO ("Opening file: \n");
+		ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
+		NRF_LOG_INFO("Error code: %d\r\n", ff_result);
+		if (ff_result != FR_OK)
 		{
-			if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+			NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
+		}else{
+			xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
+			if (xReadResult == pdTRUE)
 			{
-				NRF_LOG_INFO ("Opening file: \n");
-				ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
-				NRF_LOG_INFO("Error code: %d\r\n", ff_result);
-				if (ff_result != FR_OK)
-				{
-					NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
-				}else{
-					ff_result = f_write(&file, s, strlen(s), (UINT *) &bytes_written);
+				n = sprintf(s,"%d",BufferReceive);
+				NRF_LOG_INFO("[%s] de %d -- %d \n", s, n,BufferReceive);
+					ff_result = f_write(&file, s, n, (UINT *) &bytes_written);
 					if (ff_result != FR_OK)
 					{
 						NRF_LOG_INFO("Write failed\r\n.");
@@ -469,11 +477,15 @@ static void vSDCardFunction (void *pvParameter)
 					{
 						NRF_LOG_INFO("%d bytes written.", bytes_written);
 					}
-				}
-				ff_result = f_close(&file);
-				xSemaphoreGive( xSemaphore );
 			}
-		}
+			else
+			{
+				NRF_LOG_INFO("Erreur lecture");
+			}
+		ff_result = f_close(&file);
+		vTaskDelay(xDelay);
+	}
+}
 }
 /*******************************************************************************************************
 ***********************************************************************************************************
@@ -582,6 +594,7 @@ int main(void)
 		init();
 	
 		xQueue = xQueueCreate(10, sizeof(uint16_t));
+		//xQueue2 = xQueueCreate(10, sizeof(uint16_t));
 	
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
@@ -622,8 +635,7 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create queue read task");
 		}*/
-		/*
-		xReturned = xTaskCreate(vQueueWrite, "Q2", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xQHandleWrite );
+		xReturned = xTaskCreate(vQueueWrite, "Q2", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 2, &xQHandleWrite );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Queue task write created");
@@ -632,8 +644,7 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create queue write task");
 		}
-		*/
-		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, NULL, 1, &xSDHandle );
+		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xSDHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("SD task write created");

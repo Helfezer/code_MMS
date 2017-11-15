@@ -26,3 +26,5 @@ NRF_BLOCK_DEV_SDC_DEFINE(
 );
 
 void SDcard_init(void);
+
+char convert(int);

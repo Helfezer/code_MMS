@@ -88,3 +88,9 @@ void SDcard_init()
     NRF_LOG_RAW_INFO("");
 }
 
+char convert(int var)
+{
+	char c= (char) var;
+	return c;
+}
+
