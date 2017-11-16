@@ -64,10 +64,10 @@
  
 typedef struct 
 {
-	int16_t acc_x, acc_y, acc_z; 
-	int16_t gyr_x, gyr_y, gyr_z;
-	int16_t temp;
-	int16_t mag_x, mag_y, mag_z;
+	uint16_t acc_x, acc_y, acc_z; 
+	uint16_t gyr_x, gyr_y, gyr_z;
+	uint16_t temp;
+	uint16_t mag_x, mag_y, mag_z;
 }IMU;
 
 void init_switch_pins(void);

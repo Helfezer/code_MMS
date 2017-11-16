@@ -17,6 +17,7 @@ void init_switch_pins(void)
 /* Function which initialize the MPU6050 */
 void init_MPU6050(nrf_drv_twi_t twi_instance)
 {
+			NRF_LOG_INFO ("entering init_imu\n");
 uint8_t reset[2] = {REG_PWR_MGMT_1, 0x80};
 uint8_t unsleep[2] = {REG_PWR_MGMT_1, 0x00};
 
@@ -24,7 +25,8 @@ uint8_t unsleep[2] = {REG_PWR_MGMT_1, 0x00};
 			nrf_drv_twi_tx(&twi_instance, MPU_ADDR, reset, sizeof(reset), false);
 			nrf_delay_ms(100);
 			/* Unsleep the MPU */
-			nrf_drv_twi_tx(&twi_instance, MPU_ADDR, unsleep, sizeof(unsleep), false);			
+			nrf_drv_twi_tx(&twi_instance, MPU_ADDR, unsleep, sizeof(unsleep), false);		
+			NRF_LOG_INFO ("exiting init_imu\n");
 }
 
 
