@@ -69,6 +69,7 @@
 #include "queue.h"
 #include "task.h"
 
+
 #define FILE_NAME "MMS.TXT"
 uint8_t failed;
 
@@ -96,7 +97,7 @@ uint8_t failed;
 /**
  * @brief Reference to LED0 toggling FreeRTOS task.
  */
-//static TaskHandle_t  m_led_toggle_task_handle;
+static TaskHandle_t  m_led_toggle_task_handle;
 
 /**
  * @brief Reference to Twi IMU reading task.
@@ -119,10 +120,14 @@ TaskHandle_t  xQHandleWrite;
 TaskHandle_t  xSDHandle;
 
 /**
+ * @brief Reference to handle start/stop.
+ */
+ TaskHandle_t xStartHandle;
+
+/**
  * @brief Reference to the Queue where the datas are stocked
  */
 QueueHandle_t xQueue;
-QueueHandle_t xQueue2;
 
 /**
  * @brief Semaphore set in RTC event
@@ -168,6 +173,11 @@ uint8_t mpu_temp_reg[NB_TEMP_REG_MPU] = {REG_TEMP_H, REG_TEMP_L};
 /* HMC register tab */ 
 uint8_t hmc_reg[NB_REG_HMC] = {HMC_XH, HMC_XL, HMC_YH, HMC_YL, HMC_ZH, HMC_ZL};
 
+
+ /* Global variable to start or stop task */
+static FIL file;
+FRESULT ff_result;
+
 /**
  * @brief vTwiFunction prototype
  *
@@ -185,6 +195,8 @@ void vQueueRead(void* pvParameter);
 
 static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
+		uint32_t time;
+	
     BaseType_t yield_req = pdFALSE;
     ret_code_t err_code;
     bsp_board_led_invert(BSP_BOARD_LED_1);
@@ -193,6 +205,8 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
         BLINK_RTC_CC,
         (nrf_rtc_cc_get(m_rtc.p_reg, BLINK_RTC_CC) + BLINK_RTC_TICKS) & RTC_COUNTER_COUNTER_Msk,
         true);
+		time = nrf_drv_rtc_counter_get(&m_rtc);
+		//NRF_LOG_INFO("time:%d", time/16384);
     APP_ERROR_CHECK(err_code);
 
    /* The returned value may be safely ignored, if error is returned it only means that
@@ -208,6 +222,7 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
  */
 static void led_toggle_task_function (void * pvParameter)
 {
+	NRF_LOG_INFO("led_toggle_task_function");
     ret_code_t err_code;	
     err_code = nrf_drv_rtc_init(&m_rtc, &m_rtc_config, blink_rtc_handler);
     APP_ERROR_CHECK(err_code);
@@ -217,19 +232,66 @@ static void led_toggle_task_function (void * pvParameter)
 
     m_led_semaphore = xSemaphoreCreateBinary();
     ASSERT(NULL != m_led_semaphore);
-
+		TickType_t xDelay = 100;
     UNUSED_PARAMETER(pvParameter);
     while (true)
     {
         bsp_board_led_invert(BSP_BOARD_LED_0);
-
+				//vTaskDelay(xDelay);
         /* Wait for the event from the RTC */
         UNUSED_RETURN_VALUE(xSemaphoreTake(m_led_semaphore, portMAX_DELAY));
-
+				
     }
 
     /* Tasks must be implemented to never return... */
 }
+
+/**
+ * @brief Start task entry function.
+ *
+ * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ */
+static void start_task_function(void * pvParameter)
+{
+	NRF_LOG_INFO("start_task_function");
+	TickType_t xDelay = 20;
+  UNUSED_PARAMETER(pvParameter);
+	bool is_open = false;
+  while(true)
+  {					
+				if(bsp_board_button_state_get(BSP_BOARD_BUTTON_0) && !is_open)
+				{
+					NRF_LOG_INFO ("Opening file: ");
+					ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
+					is_open = true;
+					NRF_LOG_INFO("Error code: %d", ff_result);
+				}
+				if(bsp_board_button_state_get(BSP_BOARD_BUTTON_1) && is_open)						
+				{					
+					ff_result = f_close(&file);
+					if (ff_result != FR_OK)
+					{
+						NRF_LOG_INFO("Close failed code: %d.", ff_result);
+						return;
+					}
+					else
+					{
+						NRF_LOG_INFO("Close success.");
+						is_open = false;
+					}
+				}		
+
+				if(is_open)
+				{
+				xTaskNotifyGive(xTwiHandle);
+				}
+			
+		vTaskDelay(xDelay);
+		//NRF_LOG_INFO("Fini %d", Fini);
+	}			
+		//NRF_LOG_INFO("Bouton %d", bsp_board_button_state_get(BSP_BOARD_BUTTON_0));
+   /* Tasks must be implemented to never return... */
+}	
 
 /**
  * @brief Twi IMUs reading task entry function.
@@ -237,9 +299,9 @@ static void led_toggle_task_function (void * pvParameter)
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
  */
 void vTwiFunction (void *pvParameter)
-{		
+{		NRF_LOG_INFO("twi_task_function");
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
-		const TickType_t xDelay = 10;		
+		const TickType_t xDelay = 100;		
 		//buffer for accelerometer values
 		uint8_t acc[6] = {0};
 		//buffer for gyrometer values
@@ -254,8 +316,9 @@ void vTwiFunction (void *pvParameter)
 		int j = 0; //imu id index
 		int i = 0; //imu register id
 		
-		for(;;)
+		while(true)
 		{
+			ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 // Get values from accelerometer **********************************************
 // Point at register
 			//protecting the twi before transaction
@@ -335,20 +398,22 @@ void vTwiFunction (void *pvParameter)
 				xQueueSendToBack(xQueue, (void*) &imu_list[j], ( TickType_t ) 10);
 				// Send notify to unlock QueueRead function
 				xTaskNotifyGive(xSDHandle);
+				// Wait for SDCard signal 
+				ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 				
 				i = 0;
 				
-				NRF_LOG_INFO("IMU n_%d data:", j)
-				NRF_LOG_INFO("	acc_x:%d", imu_list[j].acc_x);
-				NRF_LOG_INFO("	acc_y:%d", imu_list[j].acc_y);
-				NRF_LOG_INFO("	acc_z:%d", imu_list[j].acc_z);
-				NRF_LOG_INFO("	gyr_x:%d", imu_list[j].gyr_x);
-				NRF_LOG_INFO("	gyr_y:%d", imu_list[j].gyr_y);
-				NRF_LOG_INFO("	gyr_z:%d", imu_list[j].gyr_z);
-				NRF_LOG_INFO("	mag_x:%d", imu_list[j].mag_x);
-				NRF_LOG_INFO("	mag_y:%d", imu_list[j].mag_y);
-				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
-				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
+//				NRF_LOG_INFO("IMU n_%d data:", j)
+//				NRF_LOG_INFO("	acc_x:%d", imu_list[j].acc_x);
+//				NRF_LOG_INFO("	acc_y:%d", imu_list[j].acc_y);
+//				NRF_LOG_INFO("	acc_z:%d", imu_list[j].acc_z);
+//				NRF_LOG_INFO("	gyr_x:%d", imu_list[j].gyr_x);
+//				NRF_LOG_INFO("	gyr_y:%d", imu_list[j].gyr_y);
+//				NRF_LOG_INFO("	gyr_z:%d", imu_list[j].gyr_z);
+//				NRF_LOG_INFO("	mag_x:%d", imu_list[j].mag_x);
+//				NRF_LOG_INFO("	mag_y:%d", imu_list[j].mag_y);
+//				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
+//				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
 				
 				if(j == NB_IMU-1)
 				{
@@ -359,14 +424,14 @@ void vTwiFunction (void *pvParameter)
 					j++;					
 				}
 				NRF_LOG_INFO("swithing to imu_%d", j);
-				switch_imu(j);				
+				switch_imu(j);	
 			}
 			else
 			{
 				i++;				
 			}
-			vTaskDelay(xDelay);
-		}
+		//vTaskDelay(xDelay);
+	}
 }
 
 /*******************************************************************************************************
@@ -375,59 +440,68 @@ void vTwiFunction (void *pvParameter)
 
 static void vSDCardFunction (void *pvParameter)
 {
+		NRF_LOG_INFO("vSDCardFunction");
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
 		IMU BufferReceive;
-		BaseType_t xReadResult;
-		const TickType_t xDelay = 50;		
-		static FIL file;
-		FRESULT ff_result;
+		BaseType_t xReadResult;		
+		//static FIL file;
+		//FRESULT ff_result;
 		uint32_t bytes_written;
+		const TickType_t xDelay = 100;	
 		char s[50];
 		int n ;
-		for ( ;; )
-	{
-		ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
-		NRF_LOG_INFO ("Opening file: \n");
-		ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);
-		NRF_LOG_INFO("Error code: %d\r\n", ff_result);
-		if (ff_result != FR_OK)
+		while(true)			
 		{
-			NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
-		}else{
-			xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
-			if (xReadResult == pdTRUE)
-			{
-				n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
-																, BufferReceive.acc_x
-																, BufferReceive.acc_y
-																, BufferReceive.acc_z
-				                        , BufferReceive.gyr_x
-				                        , BufferReceive.gyr_y
-				                        , BufferReceive.gyr_z
-				                        , BufferReceive.mag_x
-				                        , BufferReceive.mag_y
-				                        , BufferReceive.mag_z
-				                        , BufferReceive.temp
-									);
-				NRF_LOG_INFO("[%s] de %d -- %d \n", s, n,BufferReceive.acc_x);
-					ff_result = f_write(&file, s, n, (UINT *) &bytes_written);
-					if (ff_result != FR_OK)
+				ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for twi signal 				
+				if (ff_result != FR_OK)
+				{
+					NRF_LOG_WARNING("Unable to open file: " FILE_NAME ".");
+				}
+				else
+				{
+					xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);		
+					if (xReadResult == pdTRUE)
 					{
-						NRF_LOG_INFO("Write failed\r\n.");
+						n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
+																		, BufferReceive.acc_x
+																		, BufferReceive.acc_y
+																		, BufferReceive.acc_z
+																		, BufferReceive.gyr_x
+																		, BufferReceive.gyr_y
+																		, BufferReceive.gyr_z
+																		, BufferReceive.mag_x
+																		, BufferReceive.mag_y
+																		, BufferReceive.mag_z
+																		, BufferReceive.temp
+											);
+						NRF_LOG_INFO("[%s] de %d", s, n);
+						ff_result = f_write(&file, s, n, (UINT *) &bytes_written);
+						if (ff_result != FR_OK)
+						{
+							NRF_LOG_INFO("Write failed.");
+						}
+						else
+						{
+							NRF_LOG_INFO("%d bytes written.", bytes_written);
+						}
 					}
 					else
 					{
-						NRF_LOG_INFO("%d bytes written.", bytes_written);
+						NRF_LOG_INFO("Erreur lecture");
 					}
-			}
-			else
-			{
-				NRF_LOG_INFO("Erreur lecture");
-			}
-		ff_result = f_close(&file);
-		vTaskDelay(xDelay);
+//					ff_result = f_close(&file);
+//					if (ff_result != FR_OK)
+//					{
+//						NRF_LOG_INFO("Close failed code: %d.", ff_result);
+//						return;
+//					}
+//					else
+//					{
+//						NRF_LOG_INFO("Close success.");			
+						xTaskNotifyGive(xTwiHandle);
+						//vTaskDelay(xDelay);
+					}
 	}
-}
 }
 /*******************************************************************************************************
 ***********************************************************************************************************
@@ -526,6 +600,7 @@ int main(void)
     ret_code_t err_code;
 		// Configure LED-pins as outputs
 		bsp_board_leds_init();
+		bsp_board_buttons_init();
 	
 		//init debug
 		APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
@@ -542,9 +617,20 @@ int main(void)
     APP_ERROR_CHECK(err_code);
 		
 		init_switch_pins();
-    /* Create task for LED0 blinking with priority set to 2 */    
-		/*
-		xReturned = xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 1, &m_led_toggle_task_handle);
+	  /* Create task for Starting all system */ 
+		
+		xReturned = xTaskCreate(start_task_function, "STR1", configMINIMAL_STACK_SIZE + 200, NULL, 5, &xStartHandle);
+		if (xReturned == pdPASS)
+		{
+			NRF_LOG_INFO("Start task created");
+		}
+		else
+		{
+			NRF_LOG_INFO("Unable to create starting task");
+		}
+		
+    /* Create task for LED0 blinking with priority set to 2 		
+		xReturned = xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 4, &m_led_toggle_task_handle);
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Led task created");
@@ -553,10 +639,10 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create led task");
 		}
-		*/
-		
-		/* Task reading IMUs */		
-		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 2, &xTwiHandle );
+
+		Task reading IMUs */
+
+		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xTwiHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("twi task created");
@@ -565,7 +651,8 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create twi task");
 		}
-		
+
+
 		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xSDHandle );
 		if (xReturned == pdPASS)
 		{
@@ -575,6 +662,7 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create SD task");
 		}
+
 		
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
