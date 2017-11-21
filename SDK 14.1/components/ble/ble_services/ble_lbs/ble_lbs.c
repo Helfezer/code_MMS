@@ -43,6 +43,8 @@
 #include "ble_srv_common.h"
 
 
+int state = 0;
+
 /**@brief Function for handling the Write event.
  *
  * @param[in] p_lbs      LED Button Service structure.
@@ -221,15 +223,41 @@ uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
 
 uint32_t ble_lbs_on_button_change(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t button_state)
 {
+		uint8_t tab[8];
+		tab[0] = 0x01;
+		tab[1] = 0x02;
+		tab[2] = 0x03;
+		tab[3] = 0x04;
+		tab[4] = 0x05;
+		tab[5] = 0x06;
+		tab[6] = 0x07;
+		tab[7] = 0x08;
+	
     ble_gatts_hvx_params_t params;
-    uint16_t len = sizeof(button_state);
+    //uint16_t len = sizeof(button_state);
+		uint8_t data;
+		data = tab[state];
+		uint16_t len = sizeof(data);
+		
+		
 
     memset(&params, 0, sizeof(params));
     params.type   = BLE_GATT_HVX_NOTIFICATION;
     params.handle = p_lbs->button_char_handles.value_handle;
-    params.p_data = &button_state;
+    params.p_data = &data;
     params.p_len  = &len;
+		
+		if (state != 7)
+		{
+			state ++;
+			return sd_ble_gatts_hvx(conn_handle, &params);
+		}
+		else
+		{
+			state = 0;
+			return sd_ble_gatts_hvx(conn_handle, &params);
+		}
 
-    return sd_ble_gatts_hvx(conn_handle, &params);
+    
 }
 #endif // NRF_MODULE_ENABLED(BLE_LBS)
