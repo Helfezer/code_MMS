@@ -26,7 +26,10 @@ uint8_t unsleep[2] = {REG_PWR_MGMT_1, 0x00};
 			nrf_delay_ms(100);
 			/* Unsleep the MPU */
 			nrf_drv_twi_tx(&twi_instance, MPU_ADDR, unsleep, sizeof(unsleep), false);		
-			NRF_LOG_INFO ("exiting init_imu\n");
+		
+
+NRF_LOG_INFO ("exiting init_imu\n");
+
 }
 
 
