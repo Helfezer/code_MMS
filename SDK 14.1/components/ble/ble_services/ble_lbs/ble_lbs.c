@@ -223,15 +223,8 @@ uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
 
 uint32_t ble_lbs_on_button_change(uint16_t conn_handle, ble_lbs_t * p_lbs, uint8_t button_state)
 {
-		uint8_t tab[8];
-		tab[0] = 0x01;
-		tab[1] = 0x02;
-		tab[2] = 0x03;
-		tab[3] = 0x04;
-		tab[4] = 0x05;
-		tab[5] = 0x06;
-		tab[6] = 0x07;
-		tab[7] = 0x08;
+		uint8_t tab[1];
+		tab[0] = 0xFE;
 	
     ble_gatts_hvx_params_t params;
     //uint16_t len = sizeof(button_state);

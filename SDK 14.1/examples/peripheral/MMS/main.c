@@ -161,6 +161,8 @@ static volatile bool m_xfer_done = true;
 static volatile bool m_set_mode_done = false;
 
 bool is_open = false;
+bool stop = false;
+
 
 /**
  * @brief TWI instance
@@ -180,11 +182,6 @@ uint8_t mpu_temp_reg[NB_TEMP_REG_MPU] = {REG_TEMP_H, REG_TEMP_L};
 
 /* HMC register tab */ 
 uint8_t hmc_reg[NB_REG_HMC] = {HMC_XH, HMC_XL, HMC_YH, HMC_YL, HMC_ZH, HMC_ZL};
-
-
- /* Global variable to start or stop task */
-static FIL file;
-FRESULT ff_result;
 
 /**
  * @brief vTwiFunction prototype
@@ -240,7 +237,7 @@ static void led_toggle_task_function (void * pvParameter)
 
     m_led_semaphore = xSemaphoreCreateBinary();
     ASSERT(NULL != m_led_semaphore);
-		TickType_t xDelay = 100;
+		//TickType_t xDelay = 100;
     UNUSED_PARAMETER(pvParameter);
     while (true)
     {
@@ -262,18 +259,9 @@ static void led_toggle_task_function (void * pvParameter)
 static void start_task_function(void * pvParameter)
 {
   UNUSED_PARAMETER(pvParameter);
-  while(true)
-  {
-		ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for interrupt notify
-		if (!is_open)
-		{
-			NRF_LOG_INFO ("Opening file: ");
-			ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);			
-			is_open = true;
-			NRF_LOG_INFO("Error code: %d", ff_result);
-			xTaskNotifyGive(xSDHandle); //Sending notify to TwiFunction to unlock it
-		}				
-	}			
+		ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for interrupt notify (button 0)
+		xTaskNotifyGive(xSDHandle); // send signal to SDCard function to start all
+		vTaskDelete(xStartHandle);
    /* Tasks must be implemented to never return... */
 }	
 
@@ -285,26 +273,12 @@ static void start_task_function(void * pvParameter)
 static void stop_task_function(void * pvParameter)
 {
   UNUSED_PARAMETER(pvParameter);
-  while(true)
-  {
 		ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for interrupt notify
-		
-		if (is_open)
-		{
-			ff_result = f_close(&file);
-			if (ff_result != FR_OK)
-			{
-				NRF_LOG_INFO("Close failed code: %d.", ff_result);
-			}
-			else
-			{
-				NRF_LOG_INFO("Close success.");
-				is_open = false;
-			}
-		}				
-	}			
+		stop = true; //change stop flag state	
+		vTaskDelete(xStopHandle);
    /* Tasks must be implemented to never return... */
-}	
+
+}
 
 /**
  * @brief Twi IMUs reading task entry function.
@@ -312,33 +286,31 @@ static void stop_task_function(void * pvParameter)
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
  */
 void vTwiFunction (void *pvParameter)
-{		NRF_LOG_INFO("twi_task_function");
-		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
-		const TickType_t xDelay = 100;		
-		//buffer for accelerometer values
-		uint8_t acc[6] = {0};
-		//buffer for gyrometer values
-		uint8_t gyr[6] = {0};
-		//buffer for magnetometer values
-		uint8_t mag[6] = {0};
-		//buffer for temperature values
-		uint8_t temp[2] = {0};
-		/* IMU struct creation */
-		IMU imu_list[NB_IMU];
-		uint32_t notif;
-		
-		int j = 0; //imu id index
-		int i = 0; //imu register id
-		
-		while(true)
-		{
-			if(is_open)
-			{
-//			NRF_LOG_INFO("TWI: Waiting for signal 1")
-//			ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
-//			NRF_LOG_INFO("TWI: Signal Receive 1")
-// Get values from accelerometer **********************************************
-// Point at register
+{		
+	NRF_LOG_INFO("twi_task_function");
+	QueueHandle_t xQueue = (QueueHandle_t) pvParameter;	
+	//buffer for accelerometer values
+	uint8_t acc[6] = {0};
+	//buffer for gyrometer values
+	uint8_t gyr[6] = {0};
+	//buffer for magnetometer values
+	uint8_t mag[6] = {0};
+	//buffer for temperature values
+	uint8_t temp[2] = {0};
+	/* IMU struct creation */
+	IMU imu_list[NB_IMU];
+	// set sampling speed
+	const TickType_t xDelay = 80;
+	
+	int j = 0; //imu id index
+	int i = 0; //imu register id
+	
+	ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for SDCard task signal to start looping
+	while(!stop)
+	{
+			
+			// Get values from accelerometer **********************************************
+			// Point at register
 			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);
@@ -349,8 +321,8 @@ void vTwiFunction (void *pvParameter)
 			xSemaphoreGive(m_twi_mutex);
 			
 			
-// Get values from gyrometer **********************************************
-// Point at register
+			// Get values from gyrometer **********************************************
+			// Point at register
 			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);
@@ -361,8 +333,8 @@ void vTwiFunction (void *pvParameter)
 			xSemaphoreGive(m_twi_mutex);
 			
 			
-// Get values from magnetomter **********************************************
-// Point at register
+			// Get values from magnetomter **********************************************
+			// Point at register
 			//protecting the twi before transaction
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
 			nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);
@@ -373,8 +345,8 @@ void vTwiFunction (void *pvParameter)
 			xSemaphoreGive(m_twi_mutex);
 	
 		
-// Get values from temperature  **********************************************
-// Point at register
+			// Get values from temperature  **********************************************
+			// Point at register
 		if ( i < 2)
 			{
 				//protecting the twi before transaction
@@ -414,11 +386,8 @@ void vTwiFunction (void *pvParameter)
 				imu_list[j].temp = (temp[0]<<8)|temp[1];
 				// write the data struct to the queue
 				xQueueSendToBack(xQueue, (void*) &imu_list[j], ( TickType_t ) 10);
-				// Send notify to unlock QueueRead function
-				NRF_LOG_INFO("TWI: Sending signal to SD 2");
+				// data available for reading, notify SDCard task
 				xTaskNotifyGive(xSDHandle);
-				// Wait for SDCard signal
-				NRF_LOG_INFO("TWI: Waiting for signal 2");
 				ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 				
 				i = 0;
@@ -434,6 +403,7 @@ void vTwiFunction (void *pvParameter)
 //				NRF_LOG_INFO("	mag_y:%d", imu_list[j].mag_y);
 //				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
 //				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
+				//NRF_LOG_INFO("Flag state TWI %d:", is_open);				
 				
 				if(j == NB_IMU-1)
 				{
@@ -444,14 +414,19 @@ void vTwiFunction (void *pvParameter)
 					j++;					
 				}
 				NRF_LOG_INFO("swithing to imu_%d", j);
-				switch_imu(j);	
+				switch_imu(j);
+				xTaskNotifyGive(xSDHandle);
+				ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
 			}
 			else
 			{
-				i++;				
+				i++;
 			}
+			vTaskDelay(xDelay);
 		}
-	}
+	NRF_LOG_INFO("Exiting Twi task");
+	xTaskNotifyGive(xSDHandle);
+	vTaskDelete(xTwiHandle);
 }
 
 /*******************************************************************************************************
@@ -464,22 +439,31 @@ static void vSDCardFunction (void *pvParameter)
 		QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
 		IMU BufferReceive;
 		BaseType_t xReadResult;		
-		//static FIL file;
-		//FRESULT ff_result;
-		uint32_t bytes_written;
-		const TickType_t xDelay = 100;	
+		static FIL file;
+		FRESULT ff_result;
+		uint32_t bytes_written;	
 		char s[50];
 		int n ;
-		while(true)			
-		{
-				NRF_LOG_INFO("SD: Waiting for signal");
-				ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for twi signal
-				NRF_LOG_INFO("SD: Signal receive");			
-			
-					xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);	
-					if (xReadResult == pdTRUE)
-					{
-						n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
+	
+		ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //waiting for start signal
+		// signal receive, opening file
+		NRF_LOG_INFO ("Opening file: ");
+		ff_result = f_open(&file, FILE_NAME, FA_READ | FA_WRITE | FA_OPEN_APPEND);			
+		NRF_LOG_INFO("Error code: %d", ff_result);
+		is_open = true;
+		// file opened notify Twi task to unlock it
+		xTaskNotifyGive(xTwiHandle);
+		
+	while(!stop)	
+	{
+			//NRF_LOG_INFO("Flag state SD %d:", is_open);
+			ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for Twi signal, waiting for data to write
+			//check for stop flag
+				//datas are available
+				xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);	//get data
+				if (xReadResult == pdTRUE)
+				{  //formating datas
+					n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
 																		, BufferReceive.acc_x
 																		, BufferReceive.acc_y
 																		, BufferReceive.acc_z
@@ -491,25 +475,36 @@ static void vSDCardFunction (void *pvParameter)
 																		, BufferReceive.mag_z
 																		, BufferReceive.temp
 											);
-						NRF_LOG_INFO("[%s] de %d", s, n);
-						ff_result = f_write(&file, s, n, (UINT *) &bytes_written);
-						if (ff_result != FR_OK)
-						{
-							NRF_LOG_INFO("Write failed.");
-						}
-						else
-						{
-							NRF_LOG_INFO("%d bytes written.", bytes_written);
-						}
+					NRF_LOG_INFO("[%s] de %d", s, n);
+					ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
+					if (ff_result != FR_OK)
+					{
+						NRF_LOG_INFO("Write failed.");
 					}
 					else
 					{
-						NRF_LOG_INFO("Erreur lecture");
+						NRF_LOG_INFO("%d bytes written.", bytes_written);
 					}
-						NRF_LOG_INFO("SD: Sending notify to Twi 2");
-						xTaskNotifyGive(xTwiHandle);
-						//vTaskDelay(xDelay);
+				}
+				else
+				{
+					NRF_LOG_INFO("Erreur lecture");
+				}
+			xTaskNotifyGive(xTwiHandle);
+		} 
+			// stop is set
+				// closing file
+			ff_result = f_close(&file);
+			if (ff_result != FR_OK)
+			{
+				NRF_LOG_INFO("Close failed code: %d.", ff_result);
 			}
+			else
+			{
+				NRF_LOG_INFO("Close success.");
+			}
+			NRF_LOG_INFO("Exiting SD task");
+			vTaskDelete(xSDHandle);
 }
 /*******************************************************************************************************
 ***********************************************************************************************************
@@ -655,11 +650,9 @@ int main(void)
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
-		
-		init_switch_pins();
 	  /* Create task for Starting all system */ 
 		
-		xReturned = xTaskCreate(start_task_function, "STR1", configMINIMAL_STACK_SIZE + 200, NULL, 5, &xStartHandle);
+		xReturned = xTaskCreate(start_task_function, "STR1", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xStartHandle);
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Start task created");
@@ -669,7 +662,7 @@ int main(void)
 			NRF_LOG_INFO("Unable to create starting task");
 		}
 		
-		xReturned = xTaskCreate(stop_task_function, "STP1", configMINIMAL_STACK_SIZE + 200, NULL, 6, &xStopHandle);
+		xReturned = xTaskCreate(stop_task_function, "STP1", configMINIMAL_STACK_SIZE + 200, NULL, 1, &xStopHandle);
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("Stop task created");
@@ -692,7 +685,7 @@ int main(void)
 
 		Task reading IMUs */
 
-		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xTwiHandle );
+		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 4, &xTwiHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("twi task created");
@@ -703,7 +696,7 @@ int main(void)
 		}
 
 
-		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 1, &xSDHandle );
+		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xSDHandle );
 		if (xReturned == pdPASS)
 		{
 			NRF_LOG_INFO("SD task write created");
