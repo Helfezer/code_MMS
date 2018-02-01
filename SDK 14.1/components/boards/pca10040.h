@@ -37,6 +37,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  */
+ 
+ /*! 
+  * @file pca10040.h
+  * @brief Keil's generic file for pin configuration, pin use by the project is generaly re-define in project file 
+	*/
 #ifndef PCA10040_H
 #define PCA10040_H
 
@@ -46,7 +51,9 @@ extern "C" {
 
 #include "nrf_gpio.h"
 
-// LEDs definitions for PCA10040
+/*!
+ * @brief	LED pins definitions for PCA10040
+ */
 #define LEDS_NUMBER    4
 
 #define LED_START      17
@@ -67,6 +74,9 @@ extern "C" {
 #define BSP_LED_2      LED_3
 #define BSP_LED_3      LED_4
 
+/*! 
+ * @brief BUTTON pins definitions for PCA10040
+ */
 #define BUTTONS_NUMBER 4
 
 #define BUTTON_START   13
@@ -86,12 +96,18 @@ extern "C" {
 #define BSP_BUTTON_2   BUTTON_3
 #define BSP_BUTTON_3   BUTTON_4
 
+/*! 
+ * @brief UART pins definitions for PCA10040 
+ */
 #define RX_PIN_NUMBER  8
 #define TX_PIN_NUMBER  6
 #define CTS_PIN_NUMBER 7
 #define RTS_PIN_NUMBER 5
 #define HWFC           true
 
+/*!
+ * @brief SPI pins definition for PCA10040
+ */
 #define SPIS_MISO_PIN   28  // SPI MISO signal.
 #define SPIS_CSN_PIN    12  // SPI CSN signal.
 #define SPIS_MOSI_PIN   25  // SPI MOSI signal.
@@ -112,7 +128,9 @@ extern "C" {
 #define SPIM2_MISO_PIN  14  // SPI Master In Slave Out GPIO pin number.
 #define SPIM2_SS_PIN    15  // SPI Slave Select GPIO pin number.
 
-// serialization APPLICATION board - temp. setup for running serialized MEMU tests
+/*! 
+ * @brief serialization APPLICATION board - temp. setup for running serialized MEMU tests
+ */ 
 #define SER_APP_RX_PIN              23    // UART RX pin number.
 #define SER_APP_TX_PIN              24    // UART TX pin number.
 #define SER_APP_CTS_PIN             2     // UART Clear To Send pin number.
@@ -125,7 +143,9 @@ extern "C" {
 #define SER_APP_SPIM0_RDY_PIN       25     // SPI READY GPIO pin number
 #define SER_APP_SPIM0_REQ_PIN       24     // SPI REQUEST GPIO pin number
 
-// serialization CONNECTIVITY board
+/*!
+ * @brief serialization CONNECTIVITY board
+ */
 #define SER_CON_RX_PIN              24    // UART RX pin number.
 #define SER_CON_TX_PIN              23    // UART TX pin number.
 #define SER_CON_CTS_PIN             25    // UART Clear To Send pin number. Not used if HWFC is set to false.
@@ -142,34 +162,47 @@ extern "C" {
 #define SER_CONN_CHIP_RESET_PIN     11    // Pin used to reset connectivity chip
 
 
-// Arduino board mappings
-#define ARDUINO_SCL_PIN             27    // SCL signal pin
-#define ARDUINO_SDA_PIN             26    // SDA signal pin
-#define ARDUINO_AREF_PIN            2     // Aref pin
-#define ARDUINO_13_PIN              25    // Digital pin 13
-#define ARDUINO_12_PIN              24    // Digital pin 12
-#define ARDUINO_11_PIN              23    // Digital pin 11
-#define ARDUINO_10_PIN              22    // Digital pin 10
-#define ARDUINO_9_PIN               20    // Digital pin 9
-#define ARDUINO_8_PIN               19    // Digital pin 8
+/*!
+ * @ingroup MMS
+ * @{
+ * @defgroup pin Pins
+ * @{
+ * @brief Arduino board mappings
+ */
+#define ARDUINO_SCL_PIN             27    /*!< SCL signal pin   */
+#define ARDUINO_SDA_PIN             26    /*!< SDA signal pin   */
+#define ARDUINO_AREF_PIN            2     /*!< Aref pin         */
+#define ARDUINO_13_PIN              25    /*!< Digital pin 13   */
+#define ARDUINO_12_PIN              24    /*!< Digital pin 12   */
+#define ARDUINO_11_PIN              23    /*!< Digital pin 11   */
+#define ARDUINO_10_PIN              22    /*!< Digital pin 10   */
+#define ARDUINO_9_PIN               20    /*!< Digital pin 9    */
+#define ARDUINO_8_PIN               19    /*!< Digital pin 8    */
+                                          /*!<                  */
+#define ARDUINO_7_PIN               18    /*!< Digital pin 7    */
+#define ARDUINO_6_PIN               17    /*!< Digital pin 6    */
+#define ARDUINO_5_PIN               16    /*!< Digital pin 5    */
+#define ARDUINO_4_PIN               15    /*!< Digital pin 4    */
+#define ARDUINO_3_PIN               14    /*!< Digital pin 3    */
+#define ARDUINO_2_PIN               13    /*!< Digital pin 2    */
+#define ARDUINO_1_PIN               12    /*!< Digital pin 1    */
+#define ARDUINO_0_PIN               11    /*!< Digital pin 0    */
+                                          /*!<                  */
+#define ARDUINO_A0_PIN              3     /*!< Analog channel 0 */
+#define ARDUINO_A1_PIN              4     /*!< Analog channel 1 */
+#define ARDUINO_A2_PIN              28    /*!< Analog channel 2 */
+#define ARDUINO_A3_PIN              29    /*!< Analog channel 3 */
+#define ARDUINO_A4_PIN              30    /*!< Analog channel 4 */
+#define ARDUINO_A5_PIN              31    /*!< Analog channel 5 */
 
-#define ARDUINO_7_PIN               18    // Digital pin 7
-#define ARDUINO_6_PIN               17    // Digital pin 6
-#define ARDUINO_5_PIN               16    // Digital pin 5
-#define ARDUINO_4_PIN               15    // Digital pin 4
-#define ARDUINO_3_PIN               14    // Digital pin 3
-#define ARDUINO_2_PIN               13    // Digital pin 2
-#define ARDUINO_1_PIN               12    // Digital pin 1
-#define ARDUINO_0_PIN               11    // Digital pin 0
+/*!
+ * @}
+ * @}
+ */
 
-#define ARDUINO_A0_PIN              3     // Analog channel 0
-#define ARDUINO_A1_PIN              4     // Analog channel 1
-#define ARDUINO_A2_PIN              28    // Analog channel 2
-#define ARDUINO_A3_PIN              29    // Analog channel 3
-#define ARDUINO_A4_PIN              30    // Analog channel 4
-#define ARDUINO_A5_PIN              31    // Analog channel 5
-
-// Low frequency clock source to be used by the SoftDevice
+/*!
+ * @brief Low frequency clock source to be used by the SoftDevice
+ */
 #define NRF_CLOCK_LFCLKSRC      {.source       = NRF_CLOCK_LF_SRC_XTAL,      \
                                  .rc_ctiv      = 0,                          \
                                  .rc_temp_ctiv = 0,                          \

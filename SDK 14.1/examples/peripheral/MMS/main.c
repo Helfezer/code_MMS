@@ -37,14 +37,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-/** @file
- * @defgroup blinky_rtc_freertos_example_main main.c
- * @{
- * @ingroup blinky_rtc_freertos_example
+ //Création des principaux doxygen module
+/*!
+ * @defgroup MMS config
+ */
+/*! 
+ * @file main.c
+ * \author Pantostier Quentin / Meissburger Jordan / Rakotovao Sebastien
+ * \version 1.0
  *
- * @brief Blinky FreeRTOS Example Application main file.
- *
- * This file contains the source code for a sample application using FreeRTOS to blink LEDs.
+ * @brief Main file of MMS project.
+ * This file contains the source code that define the various task of MMS project.
  */
 
 #include <stdbool.h>
@@ -69,7 +72,6 @@
 #include "nrf_log_default_backends.h"
 #include "queue.h"
 #include "task.h"
-
 
 #define FILE_NAME "MMS.TXT"
 uint8_t failed;
@@ -106,32 +108,32 @@ static TaskHandle_t  m_led_toggle_task_handle;
 TaskHandle_t  xTwiHandle;
 
 /**
- * @brief Reference to Reading the Queue task.
+ * @brief Reference to Queue readind task.
  */
 TaskHandle_t  xQHandleRead;
 
 /**
- * @brief Reference to Writing into the Queue task.
+ * @brief Reference to Queue writing task.
  */
 TaskHandle_t  xQHandleWrite;
 
 /**
- * @brief Reference to Writing into the SD task.
+ * @brief Reference to SDcard writing task.
  */
 TaskHandle_t  xSDHandle;
 
 /**
- * @brief Reference to handle the start function.
+ * @brief Reference to start task.
  */
  TaskHandle_t xStartHandle;
  
  /**
- * @brief Reference to handle the stop function.
+ * @brief Reference to stop task.
  */
  TaskHandle_t xStopHandle;
 
 /**
- * @brief Reference to the Queue where the datas are stocked
+ * @brief Reference to Queue
  */
 QueueHandle_t xQueue;
 
@@ -164,36 +166,45 @@ bool is_open = false;
 bool stop = false;
 
 
-/**
+/*!
  * @brief TWI instance
  *
- * Instance of the TWI
+ * Instance of the TWI set to 1 as define in sdk_config.h
  */
 static nrf_drv_twi_t const m_twi = NRF_DRV_TWI_INSTANCE(1);
 
-/* MPU accelerometer register tab */
+/*!
+ * @brief MPU accelerometer register tab 
+ */
 uint8_t mpu_acc_reg[NB_ACC_REG_MPU] = {REG_ACC_XH, REG_ACC_XL, REG_ACC_YH, REG_ACC_YL, REG_ACC_ZH, REG_ACC_ZL};
 
-/* MPU gyrometer register tab */
+/*!
+ * @brief MPU gyrometer register tab 
+ */
 uint8_t mpu_gyr_reg[NB_GYR_REG_MPU] = {REG_GYR_XH, REG_GYR_XL, REG_GYR_YH, REG_GYR_YL, REG_GYR_ZH, REG_GYR_ZL};
 
-/* MPU thermometer register tab */
+/*!
+ * @brief MPU thermometer register tab 
+ */
 uint8_t mpu_temp_reg[NB_TEMP_REG_MPU] = {REG_TEMP_H, REG_TEMP_L};
 
-/* HMC register tab */ 
+/*!
+ * @brief HMC register tab 
+ * @todo precise what is HMC
+ */ 
 uint8_t hmc_reg[NB_REG_HMC] = {HMC_XH, HMC_XL, HMC_YH, HMC_YL, HMC_ZH, HMC_ZL};
 
-/**
+/*!
  * @brief vTwiFunction prototype
  *
- * Prototype of the function reading all IMUs
+ * Prototype of the task function that reading all IMUs
  */
 void vTwiFunction (void *pvParameter);
 
-/**
+/*!
  * @brief vQueueRead prototype
  *
- * Prototype of the function for reading all IMUs datas
+ * Prototype of the task function that read Imus data contain by Queue
  */
 void vQueueRead(void* pvParameter);
 
@@ -220,8 +231,9 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
    portYIELD_FROM_ISR(yield_req);
 }
 
-/**
- * @brief LED0 task entry function.
+/*!
+ * @fn led_toggle_task_function (void* pvParameter)
+ * @brief LED0 task function, make led blink.
  *
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
  */
@@ -251,10 +263,11 @@ static void led_toggle_task_function (void * pvParameter)
     /* Tasks must be implemented to never return... */
 }
 
-/**
- * @brief Start task entry function.
+/*!
+ * @fn start_task_function (void* pvParameter)
+ * @brief Start task function.
  *
- * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ * @param[in] pvParameter   Void Pointer that can be used to past the parameter for the task.(not used here)
  */
 static void start_task_function(void * pvParameter)
 {
@@ -265,10 +278,11 @@ static void start_task_function(void * pvParameter)
    /* Tasks must be implemented to never return... */
 }	
 
-/**
- * @brief Stop task entry function.
+/*!
+ * @fn stop_task_function (void* pvParameter)
+ * @brief Stop task function.
  *
- * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ * @param[in] pvParameter   Void Pointer that can be used to past the parameter for the task.(not used here)
  */
 static void stop_task_function(void * pvParameter)
 {
@@ -280,10 +294,11 @@ static void stop_task_function(void * pvParameter)
 
 }
 
-/**
- * @brief Twi IMUs reading task entry function.
+/*!
+ * @fn vTwiFunction (void* pvParameter)
+ * @brief Twi IMUs reading task function.
  *
- * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ * @param[in] pvParameter   void pointer used to past the queue handle to the task.
  */
 void vTwiFunction (void *pvParameter)
 {		
@@ -432,7 +447,12 @@ void vTwiFunction (void *pvParameter)
 /*******************************************************************************************************
 ********************************************************************************************************
 *******************************************************************************************************/
-
+/*!
+ * @fn vSDCardFunction (void* pvParameter)
+ * @brief SDcard writing task entry function.
+ *
+ * @param[in] pvParameter   void pointer used to past the queue handle to the task.
+ */
 static void vSDCardFunction (void *pvParameter)
 {
 		NRF_LOG_INFO("vSDCardFunction");
@@ -511,7 +531,11 @@ static void vSDCardFunction (void *pvParameter)
 *************************************************************************************************************/
 
 /**
+ * @fn twi_handler (void* pvParameter)
  * @brief TWI events handler.
+ *
+ * @param[in] p_event   const pointer for nrf_drb_twi_evt_t, allow to capt event.
+ * @param[in] p_context void pointer 
  */
 void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
 { 		
@@ -542,7 +566,10 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
     }   
 }
 
-
+/*!
+ * @fn twi_init (void)
+ * @brief Initialise twi
+ */
 void twi_init (void)
 {
     ret_code_t err_code;
@@ -562,6 +589,7 @@ void twi_init (void)
 }
 
 /**
+ * @fn init_imu (void)
  * @brief Initialization of all IMUs registers .
  */
 void init_imu(void)
@@ -583,16 +611,35 @@ void init_imu(void)
 			
 }
 
+/*!
+ * @fn stat_pin_handler (nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+ * @brief send notify to StartHandle to unlock it
+ * 
+ * @param[in] pin nrf_drv_gpiote_pin_t varaible
+ * @param[in] action nrf_gpiote_polarity_t variable
+ */
 void start_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-	xTaskNotifyGive(xStartHandle); //send notify to StartHandle to unlock it
+	xTaskNotifyGive(xStartHandle); 
 }
 
+/*!
+ * @fn stop_pin_handler (nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+ * @brief send notify to StopHandle to unlock it
+ * 
+ * @param[in] pin nrf_drv_gpiote_pin_t varaible
+ * @param[in] action nrf_gpiote_polarity_t variable
+ */
 void stop_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-	xTaskNotifyGive(xStopHandle); //send notify to StopHandle to unlock it
+	xTaskNotifyGive(xStopHandle);
 }
 
+
+/*!
+ * @fn init_pin_interrupt (void)
+ * @brief Init gpiote interruption for bouton 0 and 1
+ */
 void init_pin_interrupt (void)
 {
 		ret_code_t err_code;
@@ -613,6 +660,10 @@ void init_pin_interrupt (void)
 		nrf_drv_gpiote_in_event_enable(BSP_BUTTON_1, true);
 }
 
+/*!
+ * @fn init()
+ * @brief launch all init fonction
+ */
 void init()
 {
 	SDcard_init();
@@ -622,6 +673,11 @@ void init()
 	init_pin_interrupt();
 	nrf_delay_ms(100);
 }
+
+/*!
+ * @fn main (void)
+ * @brief main fonction which call init() / init debug / create all task / create mutex and queue / launch scheduler
+ */
 int main(void)
 {				
 		BaseType_t xReturned;

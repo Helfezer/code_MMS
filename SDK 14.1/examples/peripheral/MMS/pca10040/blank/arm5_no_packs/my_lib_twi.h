@@ -1,3 +1,9 @@
+/*!
+* @file my_lib_twi.h
+* @brief Header for TWI fonctions
+* @author Pantostier Quentin / Meissburger Jordan / Rakotovao Sebastien
+* @version 1.0 
+*/
 #include <stdbool.h>
 #include <stdint.h>
 #include "nrf_drv_twi.h"
@@ -8,24 +14,33 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-/* delay between TWI trames */
+/*!
+* @biref delay between TWI trames 
+*/
 #define MPU_DELAY						100
 #define MPU_DELAY_US				80
 
-/* Pin for swtich address */
+/*!
+ * @brief Pin for swtich address 
+ */
 #define SWITCH_A 28
 #define SWITCH_B 29
 #define SWITCH_C 30
 
-/*Common addresses definition for accelereomter. */
+/*!
+ * @brief Common addresses definition for accelereomter. 
+ */
 #define MPU_WHO_AM_I					0x75
 #define MPU_ADDR							0x68
 #define HMC_ADDR							0x1E
 
-/* Switch macros */
+/*!
+ * @brief Switch macros 
+ */
 #define NB_IMU 1
 
-/* MPU registers */
+/*!
+ * @brief MPU registers */
 #define NB_ACC_REG_MPU 6
 #define NB_GYR_REG_MPU 6
 #define NB_TEMP_REG_MPU 2
@@ -50,7 +65,9 @@
 
 #define REG_PWR_MGMT_1 0x6B
 
-/* HMC Registers */
+/*!
+ * @brief HMC Registers 
+ */
 #define HMC_CONFIG_A	0x00
 #define HMC_CONFIG_B	0x01
 #define HMC_MODE			0x02
@@ -61,18 +78,55 @@
 #define HMC_YH				0x07
 #define HMC_YL				0x08
 
- 
+/*!
+ * @typedef
+ * @struct IMU
+ * @brief structure use to save data send by IMU
+ */
 typedef struct 
 {
-	uint16_t acc_x, acc_y, acc_z; 
-	uint16_t gyr_x, gyr_y, gyr_z;
-	uint16_t temp;
-	uint16_t mag_x, mag_y, mag_z;
+	uint16_t acc_x, acc_y, acc_z; /*!< 2bytes data for acceleration on X, Y and Z */
+	uint16_t gyr_x, gyr_y, gyr_z; /*!< 2bytes data for gyroscope on X, Y and Z */
+	uint16_t temp; /*!< 2bytes data for temp */
+	uint16_t mag_x, mag_y, mag_z; /*!< 2bytes data for magnitude on X, Y and Z */
 }IMU;
 
+/*!
+ * @fn init_switch_pins (void)
+ * @brief Initialize pin use by the switchs
+ */
 void init_switch_pins(void);
+
+/*!
+ * @fn init_MPU6050 (nrf_drv_twi_t twi_instance)
+ * @brief initialise MPU6050(IMU) with the corresponding twi instance
+ *
+ * @param[in] twi_instance nrf_drv_twi_t that indicate the twi_instance use
+ */
 void init_MPU6050(nrf_drv_twi_t twi_instance);
+
+/*!
+ * @fn init_HMC5883 (nrf_drv_twi_t twi_instance)
+ * @brief initialise HMC5883 with the corresponding twi instance
+ *
+ * @param[in] twi_instance nrf_drv_twi_t that indicate the twi_instance use
+*/
 void init_HMC5883(nrf_drv_twi_t twi_instance);
-/* getting all info from the IMUs */ 
+
+/*!
+ * @fn switch_imu (int imu)
+ * @brief getting all info from the IMUs 
+ * 
+ * @param[in] imu int varaible that give IMU number
+ */ 
 void switch_imu(int imu);
+
+/*!
+ * @fn init (void)
+ * @brief init fonction use in main.c
+ */
 void init(void);
+
+/*!
+ * @}
+ */
