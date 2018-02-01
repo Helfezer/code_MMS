@@ -127,6 +127,16 @@ void switch_imu(int imu);
  */
 void init(void);
 
+/*
+ * Initialialization function for the RTC
+ * Init RTCSEC to 0x00 to start counting
+ */
+void init_RTC(void);
+/*
+ * return the value which is the register reg
+ */
+uint8_t RTC_function(uint8_t regis);
+
 /*!
  * @}
  */

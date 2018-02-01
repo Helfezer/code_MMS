@@ -61,8 +61,10 @@
 #include "nrf_drv_clock.h"
 #include "sdk_errors.h"
 #include "app_error.h"
+
 #include "nrf_drv_rtc.h"
 #include "nrf_drv_gpiote.h"
+#include "nrf_drv_uart.h"
 
 #include "my_lib_twi.h"
 #include "SDcard.h"
@@ -98,6 +100,12 @@ uint8_t failed;
 #define BLINK_RTC_TICKS   (RTC_US_TO_TICKS(500000ULL, RTC_DEFAULT_CONFIG_FREQUENCY))
 
 /**
+ * @brief Reference to ADC reading task.
+ */
+static TaskHandle_t  m_ADC_task_handle;
+
+
+/**
  * @brief Reference to LED0 toggling FreeRTOS task.
  */
 static TaskHandle_t  m_led_toggle_task_handle;
@@ -108,7 +116,12 @@ static TaskHandle_t  m_led_toggle_task_handle;
 TaskHandle_t  xTwiHandle;
 
 /**
- * @brief Reference to Queue readind task.
+ * @brief Reference to RTC task.
+ */
+TaskHandle_t  xRTCHandle;
+
+/**
+ * @brief Reference to Reading the Queue task.
  */
 TaskHandle_t  xQHandleRead;
 
@@ -173,9 +186,15 @@ bool stop = false;
  */
 static nrf_drv_twi_t const m_twi = NRF_DRV_TWI_INSTANCE(1);
 
-/*!
- * @brief MPU accelerometer register tab 
+/**
+ * @brief UART instance
+ *
+ * Instance of the UART
  */
+static nrf_drv_uart_t const m_uart = NRF_DRV_UART_INSTANCE(0);
+
+/* MPU accelerometer register tab */
+
 uint8_t mpu_acc_reg[NB_ACC_REG_MPU] = {REG_ACC_XH, REG_ACC_XL, REG_ACC_YH, REG_ACC_YL, REG_ACC_ZH, REG_ACC_ZL};
 
 /*!
@@ -230,6 +249,43 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
    UNUSED_VARIABLE(xSemaphoreGiveFromISR(m_led_semaphore, &yield_req));
    portYIELD_FROM_ISR(yield_req);
 }
+/**********************************************
+***********************************************
+*/
+
+
+/**
+ * @brief ADC task entry function.
+ *
+ * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
+ */
+static void ADC_task_function (void * pvParameter)
+{
+	NRF_LOG_INFO("test_task_function");
+    UNUSED_PARAMETER(pvParameter);
+		uint8_t adc_address = 0x6E; // ADC address
+		char reg[10] = {0};					// storage register
+    while (true)
+    {
+			//nrf_drv_twi_tx(&m_twi, reg[0], &reg[1], 1, false);
+			//nrf_delay_us(50);
+			// read register
+			nrf_drv_twi_rx(&m_twi, adc_address, reg, 6);		// read register
+			
+			nrf_delay_ms(100);
+			//NRF_LOG_INFO("Registre %d ", buf[0]);
+			//if(i==31) i = 0;
+			//i++;
+			//nrf_delay_ms(500);
+			NRF_LOG_INFO("Recu: %02x %02x %02x %02x %02x %02x", reg[0], reg[1], reg[2], reg[3], reg[4], reg[5]);
+    }
+
+    /* Tasks must be implemented to never return... */
+}
+
+/***********************************************
+************************************************
+***********************************************/
 
 /*!
  * @fn led_toggle_task_function (void* pvParameter)
@@ -263,9 +319,70 @@ static void led_toggle_task_function (void * pvParameter)
     /* Tasks must be implemented to never return... */
 }
 
-/*!
- * @fn start_task_function (void* pvParameter)
- * @brief Start task function.
+static void RTC_task_function(void * pvParameter)
+{
+		//NRF_LOG_INFO("RTC_task_function");
+    UNUSED_PARAMETER(pvParameter);
+		int i=0;
+		uint8_t rtc_address = 0x6f;
+		uint8_t reg[5];
+		reg[0] = 0x00;
+		reg[1] = 0x80; //seconds
+		reg[2] = 0x00; //minutes
+		reg[3] = 0x03; //RTCWKDAY
+		reg[4] = 0x09; //VBATEN = 1
+		uint8_t rtc[1] = {0};
+		//nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 1, false); // seconde to 00 (including CH)
+		//nrf_delay_us(100);
+		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 2, false); // register seconds
+		nrf_delay_us(100);
+		nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);						// read seconds
+		nrf_delay_ms(100);
+		
+		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[3], 2, false); // register seconds
+		nrf_delay_us(100);
+		
+    while(true)
+    {			
+			nrf_drv_twi_tx(&m_twi, rtc_address, &reg[2], 1, false); // register seconds
+			nrf_delay_us(100);
+			nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);						// read seconds
+			NRF_LOG_INFO("Recu: %02x", rtc[0]);
+			
+			nrf_delay_ms(500);
+			
+			NRF_LOG_INFO("---------------------------------------------------------------------------------");
+			
+			//NRF_LOG_INFO("Registre %d ", buf[0]);
+			//if(i==31) i = 0;
+			//i++;
+			//nrf_delay_ms(500);
+    }
+
+    // Tasks must be implemented to never return... 
+}
+
+uint8_t RTC_function(uint8_t regis)
+{
+		NRF_LOG_INFO("RTC_task_function");
+		int i=0;
+		uint8_t rtc_address = 0x6f;
+		uint8_t reg[1];
+		reg[0] = regis; //minutes
+		uint8_t rtc[1] = {0};
+		
+		// read RTC registers
+		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 1, false); // register seconds
+		nrf_delay_us(100);
+		nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);				// read seconds
+		nrf_delay_us(100);
+		NRF_LOG_INFO("Recu: %02x", rtc[0]);
+		
+		return rtc[0];
+}
+
+/**
+ * @brief Start task entry function.
  *
  * @param[in] pvParameter   Void Pointer that can be used to past the parameter for the task.(not used here)
  */
@@ -303,145 +420,116 @@ static void stop_task_function(void * pvParameter)
 void vTwiFunction (void *pvParameter)
 {		
 	NRF_LOG_INFO("twi_task_function");
-	QueueHandle_t xQueue = (QueueHandle_t) pvParameter;	
-	//buffer for accelerometer values
-	uint8_t acc[6] = {0};
-	//buffer for gyrometer values
-	uint8_t gyr[6] = {0};
-	//buffer for magnetometer values
-	uint8_t mag[6] = {0};
-	//buffer for temperature values
-	uint8_t temp[2] = {0};
-	/* IMU struct creation */
-	IMU imu_list[NB_IMU];
-	// set sampling speed
-	const TickType_t xDelay = 80;
+	QueueHandle_t xQueue = (QueueHandle_t) pvParameter;
 	
-	int j = 0; //imu id index
-	int i = 0; //imu register id
+	uint8_t acc[6] = {0};					//buffer for accelerometer values	
+	uint8_t gyr[6] = {0};					//buffer for gyrometer values	
+	uint8_t mag[6] = {0};					//buffer for magnetometer values	
+	uint8_t temp[2] = {0};				//buffer for temperature values	
+	IMU imu_list[NB_IMU];					// IMU struct creation	
+	const TickType_t xDelay = 80;	// set sampling speed
+	
+	int j = 0; 										//imu id index
+	int i = 0; 										//imu register id
 	
 	ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //wait for SDCard task signal to start looping
+	
 	while(!stop)
-	{
-			
-			// Get values from accelerometer **********************************************
-			// Point at register
-			//protecting the twi before transaction
-			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
-			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);
-			nrf_delay_us(MPU_DELAY_US);
-			// read register
-			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);
-			nrf_delay_us(MPU_DELAY_US);
-			xSemaphoreGive(m_twi_mutex);
-			
-			
-			// Get values from gyrometer **********************************************
-			// Point at register
-			//protecting the twi before transaction
-			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
-			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);
-			nrf_delay_us(MPU_DELAY_US);
-			// read register	
-			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);
-			nrf_delay_us(MPU_DELAY_US);
-			xSemaphoreGive(m_twi_mutex);
-			
-			
-			// Get values from magnetomter **********************************************
-			// Point at register
-			//protecting the twi before transaction
-			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
-			nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);
-			nrf_delay_us(MPU_DELAY_US);
-			// read register	
-			nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);
-			nrf_delay_us(MPU_DELAY_US);
-			xSemaphoreGive(m_twi_mutex);
+	{			
+		// Get values from accelerometer			
+		
+		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
+		
+		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);	// Point at register
+		nrf_delay_us(MPU_DELAY_US);			
+		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);									// read register
+		nrf_delay_us(MPU_DELAY_US);
+		
+		xSemaphoreGive(m_twi_mutex);																	// Free the twi
+		
+		
+		// Get values from gyrometer		
+		
+		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
+		
+		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);	// Point at register
+		nrf_delay_us(MPU_DELAY_US);			
+		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);									// read register	
+		nrf_delay_us(MPU_DELAY_US);																		
+		
+		xSemaphoreGive(m_twi_mutex);																	// Free the twi
+		
+		
+		// Get values from magnetomter	
+		
+		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
+		
+		nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);			// Point at register
+		nrf_delay_us(MPU_DELAY_US);		
+		nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);									// read register	
+		nrf_delay_us(MPU_DELAY_US);
+		
+		xSemaphoreGive(m_twi_mutex);																	// Free the twi
 	
 		
-			// Get values from temperature  **********************************************
-			// Point at register
-		if ( i < 2)
+		// Get values from temperature
+			
+		if ( i < 2)																											// Two first register read, now reading temperature
+		{				
+			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
+			
+			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);	// Point at register
+			nrf_delay_us(MPU_DELAY_US);
+			
+			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &temp[i], 1);								// read register
+			nrf_delay_us(MPU_DELAY_US);
+			
+			xSemaphoreGive(m_twi_mutex);																	// Free the twi
+			i++;
+		}
+		else if (i == 5)																								// All registers have been read
+		{
+			// Fill structure with data
+			imu_list[j].acc_x = (acc[0]<<8)|acc[1]; 	// Accelerometer X				
+			imu_list[j].acc_y = (acc[2]<<8)|acc[3];		// Accelerometer Y				
+			imu_list[j].acc_z = (acc[4]<<8)|acc[5];		// Accelerometer Z
+			imu_list[j].gyr_x = (gyr[0]<<8)|gyr[1];		// Gyrometer X
+			imu_list[j].gyr_y = (gyr[2]<<8)|gyr[3];		// Gyrometer Y	
+			imu_list[j].gyr_z = (gyr[4]<<8)|gyr[5];		// Gyrometer Z
+			imu_list[j].mag_x = (mag[0]<<8)|mag[1];		// Magnetometer X	
+			imu_list[j].mag_y = (mag[2]<<8)|mag[3];		// Magnetometer Z		
+			imu_list[j].mag_z = (mag[4]<<8)|mag[5];		// Magnetometer Y		
+			imu_list[j].temp = (temp[0]<<8)|temp[1];	//Temperature
+			
+			xQueueSendToBack(xQueue, (void*) &imu_list[j], ( TickType_t ) 10);	// write the data struct to the queue
+			xTaskNotifyGive(xSDHandle);																					// data available for reading, notify SDCard task
+			ulTaskNotifyTake( pdTRUE, portMAX_DELAY );													// Wait for SDCard notify to continue
+			
+			i = 0;																															// Reset register index		
+			
+			if(j == NB_IMU-1)																										// All IMU read, reset IMU index
 			{
-				//protecting the twi before transaction
-				xSemaphoreTake(m_twi_mutex, portMAX_DELAY);
-				nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);
-				nrf_delay_us(MPU_DELAY_US);
-				// read register
-				nrf_drv_twi_rx(&m_twi, MPU_ADDR, &temp[i], 1);
-				nrf_delay_us(MPU_DELAY_US);
-				xSemaphoreGive(m_twi_mutex);
-				i++;
-			}
-
-		else if (i == 5)
-			{				
-				// Accelerometer X
-				imu_list[j].acc_x = (acc[0]<<8)|acc[1]; 				
-				// Accelerometer Y
-				imu_list[j].acc_y = (acc[2]<<8)|acc[3];
-				// Accelerometer Z
-				imu_list[j].acc_z = (acc[4]<<8)|acc[5];
-				
-				// Gyrometer X
-				imu_list[j].gyr_x = (gyr[0]<<8)|gyr[1];				
-				// Gyrometer Y
-				imu_list[j].gyr_y = (gyr[2]<<8)|gyr[3];				
-				// Gyrometer Z
-				imu_list[j].gyr_z = (gyr[4]<<8)|gyr[5];
-				// Magnetometer X
-				imu_list[j].mag_x = (mag[0]<<8)|mag[1];				
-				// Magnetometer Z
-				imu_list[j].mag_y = (mag[2]<<8)|mag[3];				
-				// Magnetometer Y
-				imu_list[j].mag_z = (mag[4]<<8)|mag[5];
-				
-				//Temperature
-				imu_list[j].temp = (temp[0]<<8)|temp[1];
-				// write the data struct to the queue
-				xQueueSendToBack(xQueue, (void*) &imu_list[j], ( TickType_t ) 10);
-				// data available for reading, notify SDCard task
-				xTaskNotifyGive(xSDHandle);
-				ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
-				
-				i = 0;
-				
-//				NRF_LOG_INFO("IMU n_%d data:", j)
-//				NRF_LOG_INFO("	acc_x:%d", imu_list[j].acc_x);
-//				NRF_LOG_INFO("	acc_y:%d", imu_list[j].acc_y);
-//				NRF_LOG_INFO("	acc_z:%d", imu_list[j].acc_z);
-//				NRF_LOG_INFO("	gyr_x:%d", imu_list[j].gyr_x);
-//				NRF_LOG_INFO("	gyr_y:%d", imu_list[j].gyr_y);
-//				NRF_LOG_INFO("	gyr_z:%d", imu_list[j].gyr_z);
-//				NRF_LOG_INFO("	mag_x:%d", imu_list[j].mag_x);
-//				NRF_LOG_INFO("	mag_y:%d", imu_list[j].mag_y);
-//				NRF_LOG_INFO("	mag_z:%d", imu_list[j].mag_z);
-//				NRF_LOG_INFO("	temp:%d °C", ((imu_list[j].temp)/340)+36.53);
-				//NRF_LOG_INFO("Flag state TWI %d:", is_open);				
-				
-				if(j == NB_IMU-1)
-				{
-					j = 0;					
-				}
-				else
-				{					
-					j++;					
-				}
-				NRF_LOG_INFO("swithing to imu_%d", j);
-				switch_imu(j);
-				xTaskNotifyGive(xSDHandle);
-				ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+				j = 0;					
 			}
 			else
-			{
-				i++;
+			{					
+				j++;																															// Else increase IMU index					
 			}
-			vTaskDelay(xDelay);
+			
+			NRF_LOG_INFO("swithing to imu_%d", j);
+			switch_imu(j);																											// Switching IMU
+			xTaskNotifyGive(xSDHandle);																					// Notify SDCard
+			ulTaskNotifyTake( pdTRUE, portMAX_DELAY );													// Wair for SDCard Notify
 		}
+		else
+		{
+			i++;																															// Increase register index
+		}
+		vTaskDelay(xDelay);																									// Delay
+	}
 	NRF_LOG_INFO("Exiting Twi task");
-	xTaskNotifyGive(xSDHandle);
-	vTaskDelete(xTwiHandle);
+	xTaskNotifyGive(xSDHandle);																							// Notify SDCard to unlock it
+	vTaskDelete(xTwiHandle);																								// Deleting task
 }
 
 /*******************************************************************************************************
@@ -462,8 +550,9 @@ static void vSDCardFunction (void *pvParameter)
 		static FIL file;
 		FRESULT ff_result;
 		uint32_t bytes_written;	
-		char s[50];
-		int n ;
+		char s[50] = {0};
+		int n, reg_index;
+		
 	
 		ulTaskNotifyTake( pdTRUE, portMAX_DELAY ); //waiting for start signal
 		// signal receive, opening file
@@ -472,6 +561,28 @@ static void vSDCardFunction (void *pvParameter)
 		NRF_LOG_INFO("Error code: %d", ff_result);
 		is_open = true;
 		// file opened notify Twi task to unlock it
+	  
+		for(reg_index=0; reg_index<7; reg_index++) //read first 7 RTC register
+		{
+			
+			n = sprintf(s,"%02x",RTC_function(reg_index));
+			NRF_LOG_INFO("valeur %s du registre %d, nbr caract %d", s, reg_index, n);
+			NRF_LOG_INFO("fonction %d", RTC_function(reg_index));
+			ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
+					if (ff_result != FR_OK)
+					{
+						NRF_LOG_INFO("Write failed.");
+					}
+					else
+					{
+						NRF_LOG_INFO("%d bytes written.", bytes_written);
+					}
+		}
+		
+		/*
+		 * RTC ici
+		*/
+		
 		xTaskNotifyGive(xTwiHandle);
 		
 	while(!stop)	
@@ -607,8 +718,7 @@ void init_imu(void)
 				nrf_delay_ms(MPU_DELAY);
 				imu_id ++;
 				switch_imu(imu_id);				
-			}
-			
+			}			
 }
 
 /*!
@@ -660,6 +770,19 @@ void init_pin_interrupt (void)
 		nrf_drv_gpiote_in_event_enable(BSP_BUTTON_1, true);
 }
 
+void init_RTC(void)
+{
+		NRF_LOG_INFO("Init_RTC");
+		int i=0;
+		uint8_t rtc_address = 0x6f;
+		uint8_t reg[2];
+		reg[0] = 0x00; // RTCSEC register address
+		reg[1] = 0x00; // set RTCSEC to 0x00
+
+		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 2, false); // register seconds
+		nrf_delay_us(100);
+}
+
 /*!
  * @fn init()
  * @brief launch all init fonction
@@ -669,6 +792,7 @@ void init()
 	SDcard_init();
 	init_switch_pins();
 	init_imu();
+	init_RTC();
 	
 	init_pin_interrupt();
 	nrf_delay_ms(100);
@@ -706,8 +830,18 @@ int main(void)
     /* Initialize clock driver for better time accuracy in FREERTOS */
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
-	  /* Create task for Starting all system */ 
-		
+	  /* Create task for Starting all system */
+		/*
+		xReturned = xTaskCreate(RTC_task_function, "RTC", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xRTCHandle);
+		if (xReturned == pdPASS)
+		{
+			NRF_LOG_INFO("RTC task created");
+		}
+		else
+		{
+			NRF_LOG_INFO("Unable to create RTC task");
+		}
+		*/
 		xReturned = xTaskCreate(start_task_function, "STR1", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xStartHandle);
 		if (xReturned == pdPASS)
 		{
@@ -728,7 +862,8 @@ int main(void)
 			NRF_LOG_INFO("Unable to create stoping task");
 		}
 		
-    /* Create task for LED0 blinking with priority set to 2 		
+    // Create task for LED0 blinking with priority set to 2
+		/*
 		xReturned = xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 4, &m_led_toggle_task_handle);
 		if (xReturned == pdPASS)
 		{
@@ -738,8 +873,8 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create led task");
 		}
-
-		Task reading IMUs */
+		*/
+		//Task reading IMUs 
 
 		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 4, &xTwiHandle );
 		if (xReturned == pdPASS)
@@ -751,7 +886,6 @@ int main(void)
 			NRF_LOG_INFO("Unable to create twi task");
 		}
 
-
 		xReturned = xTaskCreate(vSDCardFunction, "SD1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 3, &xSDHandle );
 		if (xReturned == pdPASS)
 		{
@@ -761,8 +895,17 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create SD task");
 		}
-
-		
+/*
+		xReturned = xTaskCreate(ADC_task_function, "ADC1", configMINIMAL_STACK_SIZE + 200, (void*) NULL, 3, &m_ADC_task_handle );
+		if (xReturned == pdPASS)
+		{
+			NRF_LOG_INFO("ADC task write created");
+		}
+		else
+		{
+			NRF_LOG_INFO("Unable to create ADC task");
+		}
+*/
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 
