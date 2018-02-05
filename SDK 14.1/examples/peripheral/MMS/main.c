@@ -319,6 +319,12 @@ static void led_toggle_task_function (void * pvParameter)
     /* Tasks must be implemented to never return... */
 }
 
+/*!
+ * @fn RTC_task_function (void* pvParameter)
+ * @brief task function for RTC
+ * @param[in] pvParameter not used
+ */
+
 static void RTC_task_function(void * pvParameter)
 {
 		//NRF_LOG_INFO("RTC_task_function");
