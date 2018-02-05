@@ -18,7 +18,7 @@
 * @biref delay between TWI trames 
 */
 #define MPU_DELAY						100
-#define MPU_DELAY_US				80
+#define MPU_DELAY_US				100
 
 /*!
  * @brief Pin for swtich address 
@@ -33,6 +33,7 @@
 #define MPU_WHO_AM_I					0x75
 #define MPU_ADDR							0x68
 #define HMC_ADDR							0x1E
+#define ADC_ADDR							0x6E
 
 /*!
  * @brief Switch macros 
@@ -89,6 +90,7 @@ typedef struct
 	uint16_t gyr_x, gyr_y, gyr_z; /*!< 2bytes data for gyroscope on X, Y and Z */
 	uint16_t temp; /*!< 2bytes data for temp */
 	uint16_t mag_x, mag_y, mag_z; /*!< 2bytes data for magnitude on X, Y and Z */
+	uint16_t adc;
 }IMU;
 
 /*!
@@ -135,8 +137,24 @@ void init_RTC(void);
 /*
  * return the value which is the register reg
  */
-uint8_t RTC_function(uint8_t regis);
+uint8_t RTC_function(uint8_t regis, nrf_drv_twi_t twi_instance);
 
 /*!
- * @}
+ * @fn ADC_function (void)
+ * @brief function reading ADC on TWI bus
+ *
+ * @param[in] twi_instance instance of the TWI to use for the communication
  */
+uint16_t ADC_function(nrf_drv_twi_t twi_instance);
+
+
+/*!
+ * @fn IMU_function
+ * @brief function reading IMU data on twi bus
+ *
+ * @param[in] twi_instance instance of the TWI to use for the communication
+ * @param[in] reg address of the register to read
+ * @param[in] addr adresse of the device on twi bus
+ */
+ uint8_t IMU_function(nrf_drv_twi_t twi_instance, uint8_t addr, uint8_t* reg);
+	 

@@ -108,7 +108,7 @@ static TaskHandle_t  m_ADC_task_handle;
 /**
  * @brief Reference to LED0 toggling FreeRTOS task.
  */
-static TaskHandle_t  m_led_toggle_task_handle;
+//static TaskHandle_t  m_led_toggle_task_handle;
 
 /**
  * @brief Reference to Twi IMU reading task.
@@ -227,7 +227,7 @@ void vTwiFunction (void *pvParameter);
  */
 void vQueueRead(void* pvParameter);
 
-
+/*
 static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
 {
 		uint32_t time;
@@ -244,21 +244,19 @@ static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
 		//NRF_LOG_INFO("time:%d", time/16384);
     APP_ERROR_CHECK(err_code);
 
-   /* The returned value may be safely ignored, if error is returned it only means that
-    * the semaphore is already given (raised). */
+   *The returned value may be safely ignored, if error is returned it only means that
+   *the semaphore is already given (raised). 
    UNUSED_VARIABLE(xSemaphoreGiveFromISR(m_led_semaphore, &yield_req));
    portYIELD_FROM_ISR(yield_req);
 }
-/**********************************************
-***********************************************
 */
 
 
-/**
+/*
  * @brief ADC task entry function.
  *
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
- */
+ *
 static void ADC_task_function (void * pvParameter)
 {
 	NRF_LOG_INFO("test_task_function");
@@ -280,19 +278,17 @@ static void ADC_task_function (void * pvParameter)
 			NRF_LOG_INFO("Recu: %02x %02x %02x %02x %02x %02x", reg[0], reg[1], reg[2], reg[3], reg[4], reg[5]);
     }
 
-    /* Tasks must be implemented to never return... */
+     Tasks must be implemented to never return... 
 }
+*/
 
-/***********************************************
-************************************************
-***********************************************/
 
 /*!
  * @fn led_toggle_task_function (void* pvParameter)
  * @brief LED0 task function, make led blink.
  *
  * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
- */
+
 static void led_toggle_task_function (void * pvParameter)
 {
 	NRF_LOG_INFO("led_toggle_task_function");
@@ -311,25 +307,19 @@ static void led_toggle_task_function (void * pvParameter)
     {
         bsp_board_led_invert(BSP_BOARD_LED_0);
 				//vTaskDelay(xDelay);
-        /* Wait for the event from the RTC */
+        * Wait for the event from the RTC 
         UNUSED_RETURN_VALUE(xSemaphoreTake(m_led_semaphore, portMAX_DELAY));
 				
     }
 
-    /* Tasks must be implemented to never return... */
+     Tasks must be implemented to never return... 
 }
-
-/*!
- * @fn RTC_task_function (void* pvParameter)
- * @brief task function for RTC
- * @param[in] pvParameter not used
- */
+*/
 
 static void RTC_task_function(void * pvParameter)
 {
 		//NRF_LOG_INFO("RTC_task_function");
     UNUSED_PARAMETER(pvParameter);
-		int i=0;
 		uint8_t rtc_address = 0x6f;
 		uint8_t reg[5];
 		reg[0] = 0x00;
@@ -366,25 +356,6 @@ static void RTC_task_function(void * pvParameter)
     }
 
     // Tasks must be implemented to never return... 
-}
-
-uint8_t RTC_function(uint8_t regis)
-{
-		NRF_LOG_INFO("RTC_task_function");
-		int i=0;
-		uint8_t rtc_address = 0x6f;
-		uint8_t reg[1];
-		reg[0] = regis; //minutes
-		uint8_t rtc[1] = {0};
-		
-		// read RTC registers
-		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 1, false); // register seconds
-		nrf_delay_us(100);
-		nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);				// read seconds
-		nrf_delay_us(100);
-		NRF_LOG_INFO("Recu: %02x", rtc[0]);
-		
-		return rtc[0];
 }
 
 /**
@@ -431,7 +402,9 @@ void vTwiFunction (void *pvParameter)
 	uint8_t acc[6] = {0};					//buffer for accelerometer values	
 	uint8_t gyr[6] = {0};					//buffer for gyrometer values	
 	uint8_t mag[6] = {0};					//buffer for magnetometer values	
-	uint8_t temp[2] = {0};				//buffer for temperature values	
+	uint8_t temp[2] = {0};				//buffer for temperature values
+	uint16_t adc_buf[1] = {0};		//buffer for adc values
+	
 	IMU imu_list[NB_IMU];					// IMU struct creation	
 	const TickType_t xDelay = 80;	// set sampling speed
 	
@@ -446,10 +419,11 @@ void vTwiFunction (void *pvParameter)
 		
 		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
 		
-		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);	// Point at register
-		nrf_delay_us(MPU_DELAY_US);			
-		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);									// read register
-		nrf_delay_us(MPU_DELAY_US);
+//		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_acc_reg[i], 1, false);	// Point at register
+//		nrf_delay_us(MPU_DELAY_US);			
+//		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &acc[i], 1);									// read register
+//		nrf_delay_us(MPU_DELAY_US);
+		acc[i] = IMU_function(m_twi, MPU_ADDR, &mpu_acc_reg[i]);
 		
 		xSemaphoreGive(m_twi_mutex);																	// Free the twi
 		
@@ -458,10 +432,11 @@ void vTwiFunction (void *pvParameter)
 		
 		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
 		
-		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);	// Point at register
-		nrf_delay_us(MPU_DELAY_US);			
-		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);									// read register	
-		nrf_delay_us(MPU_DELAY_US);																		
+//		nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_gyr_reg[i], 1, false);	// Point at register
+//		nrf_delay_us(MPU_DELAY_US);			
+//		nrf_drv_twi_rx(&m_twi, MPU_ADDR, &gyr[i], 1);									// read register	
+//		nrf_delay_us(MPU_DELAY_US);																		
+		gyr[i] = IMU_function(m_twi, MPU_ADDR, &mpu_gyr_reg[i]);
 		
 		xSemaphoreGive(m_twi_mutex);																	// Free the twi
 		
@@ -470,10 +445,12 @@ void vTwiFunction (void *pvParameter)
 		
 		xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
 		
-		nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);			// Point at register
-		nrf_delay_us(MPU_DELAY_US);		
-		nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);									// read register	
-		nrf_delay_us(MPU_DELAY_US);
+//		nrf_drv_twi_tx(&m_twi, HMC_ADDR, &hmc_reg[i], 1, false);			// Point at register
+//		nrf_delay_us(MPU_DELAY_US);		
+//		nrf_drv_twi_rx(&m_twi, HMC_ADDR, &mag[i], 1);									// read register	
+//		nrf_delay_us(MPU_DELAY_US);
+
+		mag[i] = IMU_function(m_twi, HMC_ADDR, &hmc_reg[i]);
 		
 		xSemaphoreGive(m_twi_mutex);																	// Free the twi
 	
@@ -484,17 +461,21 @@ void vTwiFunction (void *pvParameter)
 		{				
 			xSemaphoreTake(m_twi_mutex, portMAX_DELAY);										//protecting the twi during transaction
 			
-			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);	// Point at register
-			nrf_delay_us(MPU_DELAY_US);
+//			nrf_drv_twi_tx(&m_twi, MPU_ADDR, &mpu_temp_reg[i], 1, false);	// Point at register
+//			nrf_delay_us(MPU_DELAY_US);			
+//			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &temp[i], 1);								// read register
+//			nrf_delay_us(MPU_DELAY_US);
 			
-			nrf_drv_twi_rx(&m_twi, MPU_ADDR, &temp[i], 1);								// read register
-			nrf_delay_us(MPU_DELAY_US);
+			temp[i] = IMU_function(m_twi, MPU_ADDR, &mpu_temp_reg[i]);
 			
 			xSemaphoreGive(m_twi_mutex);																	// Free the twi
+			
+			
 			i++;
 		}
 		else if (i == 5)																								// All registers have been read
 		{
+			adc_buf[0] = ADC_function(m_twi);
 			// Fill structure with data
 			imu_list[j].acc_x = (acc[0]<<8)|acc[1]; 	// Accelerometer X				
 			imu_list[j].acc_y = (acc[2]<<8)|acc[3];		// Accelerometer Y				
@@ -505,7 +486,8 @@ void vTwiFunction (void *pvParameter)
 			imu_list[j].mag_x = (mag[0]<<8)|mag[1];		// Magnetometer X	
 			imu_list[j].mag_y = (mag[2]<<8)|mag[3];		// Magnetometer Z		
 			imu_list[j].mag_z = (mag[4]<<8)|mag[5];		// Magnetometer Y		
-			imu_list[j].temp = (temp[0]<<8)|temp[1];	//Temperature
+			imu_list[j].temp = (temp[0]<<8)|temp[1];	// Temperature
+			imu_list[j].adc = adc_buf[0];							// ADC value
 			
 			xQueueSendToBack(xQueue, (void*) &imu_list[j], ( TickType_t ) 10);	// write the data struct to the queue
 			xTaskNotifyGive(xSDHandle);																					// data available for reading, notify SDCard task
@@ -571,9 +553,9 @@ static void vSDCardFunction (void *pvParameter)
 		for(reg_index=0; reg_index<7; reg_index++) //read first 7 RTC register
 		{
 			
-			n = sprintf(s,"%02x",RTC_function(reg_index));
+			n = sprintf(s,"%02x",RTC_function(reg_index, m_twi));
 			NRF_LOG_INFO("valeur %s du registre %d, nbr caract %d", s, reg_index, n);
-			NRF_LOG_INFO("fonction %d", RTC_function(reg_index));
+			NRF_LOG_INFO("fonction %d", RTC_function(reg_index, m_twi));
 			ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
 					if (ff_result != FR_OK)
 					{
@@ -600,7 +582,7 @@ static void vSDCardFunction (void *pvParameter)
 				xReadResult = xQueueReceive(xQueue, &BufferReceive, (TickType_t) 10);	//get data
 				if (xReadResult == pdTRUE)
 				{  //formating datas
-					n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
+					n = sprintf(s,"%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x%04x"
 																		, BufferReceive.acc_x
 																		, BufferReceive.acc_y
 																		, BufferReceive.acc_z
@@ -611,6 +593,7 @@ static void vSDCardFunction (void *pvParameter)
 																		, BufferReceive.mag_y
 																		, BufferReceive.mag_z
 																		, BufferReceive.temp
+																		, BufferReceive.adc
 											);
 					NRF_LOG_INFO("[%s] de %d", s, n);
 					ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
@@ -779,7 +762,6 @@ void init_pin_interrupt (void)
 void init_RTC(void)
 {
 		NRF_LOG_INFO("Init_RTC");
-		int i=0;
 		uint8_t rtc_address = 0x6f;
 		uint8_t reg[2];
 		reg[0] = 0x00; // RTCSEC register address

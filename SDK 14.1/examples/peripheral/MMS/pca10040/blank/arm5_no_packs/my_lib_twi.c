@@ -99,3 +99,50 @@ void switch_imu(int imu)
 	}
 	
 }
+
+uint8_t RTC_function(uint8_t regis, nrf_drv_twi_t twi_instance)
+{
+		NRF_LOG_INFO("RTC_function");
+		uint8_t rtc_address = 0x6f;
+		uint8_t reg[1];
+		reg[0] = regis; //minutes
+		uint8_t rtc[1] = {0};
+		
+		// read RTC registers
+		nrf_drv_twi_tx(&twi_instance, rtc_address, &reg[0], 1, false); // register seconds
+		nrf_delay_us(100);
+		nrf_drv_twi_rx(&twi_instance, rtc_address, &rtc[0], 1);				// read seconds
+		nrf_delay_us(100);
+		NRF_LOG_INFO("Recu: %02x", rtc[0]);
+		
+		return rtc[0];
+}
+
+uint16_t ADC_function(nrf_drv_twi_t twi_instance)
+{
+	NRF_LOG_INFO("ADC_function");
+	uint8_t reg[2] = {0};						// storage register
+	uint16_t ret;
+	
+	nrf_drv_twi_rx(&twi_instance, ADC_ADDR, reg, 2);		// read registers
+	nrf_delay_us(100);
+	ret =(reg[0]<<8)|reg[1];
+	NRF_LOG_INFO("ADC value =%04x", ret); 
+	
+	return ret;
+}
+
+uint8_t IMU_function(nrf_drv_twi_t twi_instance,uint8_t addr, uint8_t* reg)
+{
+		uint8_t write[1] = {0};
+		
+		nrf_drv_twi_tx(&twi_instance, addr, reg, 1, false);	// Point at register
+		nrf_delay_us(MPU_DELAY_US);			
+		nrf_drv_twi_rx(&twi_instance, addr, &write[0], 1);				// read register
+		nrf_delay_us(MPU_DELAY_US);
+	
+		return write[0];
+};
+
+
+
