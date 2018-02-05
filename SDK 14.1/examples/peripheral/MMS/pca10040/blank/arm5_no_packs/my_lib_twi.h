@@ -14,34 +14,35 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-/*!
-* @biref delay between TWI trames 
+/*
+* delay between TWI trames 
 */
 #define MPU_DELAY						100
 #define MPU_DELAY_US				100
 
-/*!
- * @brief Pin for swtich address 
+/*
+ * Pin for swtich address 
  */
 #define SWITCH_A 28
 #define SWITCH_B 29
 #define SWITCH_C 30
 
-/*!
- * @brief Common addresses definition for accelereomter. 
+/*
+ * Common addresses definition for accelereomter. 
  */
 #define MPU_WHO_AM_I					0x75
 #define MPU_ADDR							0x68
 #define HMC_ADDR							0x1E
 #define ADC_ADDR							0x6E
 
-/*!
- * @brief Switch macros 
+/*
+ * Switch macros 
  */
 #define NB_IMU 1
 
-/*!
- * @brief MPU registers */
+/*
+ * MPU registers 
+ */
 #define NB_ACC_REG_MPU 6
 #define NB_GYR_REG_MPU 6
 #define NB_TEMP_REG_MPU 2
@@ -66,8 +67,8 @@
 
 #define REG_PWR_MGMT_1 0x6B
 
-/*!
- * @brief HMC Registers 
+/*
+ * HMC Registers 
  */
 #define HMC_CONFIG_A	0x00
 #define HMC_CONFIG_B	0x01
@@ -80,7 +81,6 @@
 #define HMC_YL				0x08
 
 /*!
- * @typedef
  * @struct IMU
  * @brief structure use to save data send by IMU
  */
@@ -117,25 +117,26 @@ void init_HMC5883(nrf_drv_twi_t twi_instance);
 
 /*!
  * @fn switch_imu (int imu)
- * @brief getting all info from the IMUs 
+ * @brief change value in switch to select a specific IMU 
  * 
- * @param[in] imu int varaible that give IMU number
+ * @param[in] imu IMU number (int)
  */ 
 void switch_imu(int imu);
 
 /*!
- * @fn init (void)
- * @brief init fonction use in main.c
- */
-void init(void);
-
-/*
- * Initialialization function for the RTC
- * Init RTCSEC to 0x00 to start counting
+ * @fn init_RTC ()
+ * @brief Initialialization function for the RTC
+ * @remark Init RTCSEC to 0x00 to start counting
  */
 void init_RTC(void);
-/*
- * return the value which is the register reg
+
+/*!
+ * @fn RTC_function (uint8_t regis, nrf_drv_twi_t twi_instance)
+ * @brief Function reading a register in RTC on twi bus
+ *
+ * @param[in] regis registre to read (uint8_t)
+ * @param[in} twi_instance instance twi used (nrf_drv_twi_t)
+ * @return the value which is the register reg
  */
 uint8_t RTC_function(uint8_t regis, nrf_drv_twi_t twi_instance);
 
@@ -144,6 +145,7 @@ uint8_t RTC_function(uint8_t regis, nrf_drv_twi_t twi_instance);
  * @brief function reading ADC on TWI bus
  *
  * @param[in] twi_instance instance of the TWI to use for the communication
+ * @return the value convert by the ADC
  */
 uint16_t ADC_function(nrf_drv_twi_t twi_instance);
 
@@ -155,6 +157,7 @@ uint16_t ADC_function(nrf_drv_twi_t twi_instance);
  * @param[in] twi_instance instance of the TWI to use for the communication
  * @param[in] reg address of the register to read
  * @param[in] addr adresse of the device on twi bus
+ * @return the value mesure by IMU
  */
  uint8_t IMU_function(nrf_drv_twi_t twi_instance, uint8_t addr, uint8_t* reg);
 	 

@@ -13,6 +13,17 @@ void init_switch_pins(void)
 		nrf_gpio_pin_clear(SWITCH_C);
 }
 
+void init_RTC(void)
+{
+		NRF_LOG_INFO("Init_RTC");
+		uint8_t rtc_address = 0x6f;
+		uint8_t reg[2];
+		reg[0] = 0x00; // RTCSEC register address
+		reg[1] = 0x00; // set RTCSEC to 0x00
+
+		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 2, false); // register seconds
+		nrf_delay_us(100);
+}
 
 /* Function which initialize the MPU6050 */
 void init_MPU6050(nrf_drv_twi_t twi_instance)
