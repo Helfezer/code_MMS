@@ -128,7 +128,7 @@ void switch_imu(int imu);
  * @brief Initialialization function for the RTC
  * @remark Init RTCSEC to 0x00 to start counting
  */
-void init_RTC(void);
+void init_RTC(nrf_drv_twi_t const m_twi);
 
 /*!
  * @fn RTC_function (uint8_t regis, nrf_drv_twi_t twi_instance)

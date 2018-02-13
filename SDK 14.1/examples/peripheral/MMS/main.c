@@ -222,7 +222,7 @@ void init_pin_interrupt (void);
 /*
  * Prototype of the init function for twi
  */
-void twi_init (void)
+void twi_init (void);
 	
 /*
  * Prototype of the init function
@@ -546,15 +546,7 @@ static void vSDCardFunction (void *pvParameter)
 			n = sprintf(s,"%02x",RTC_function(reg_index, m_twi));
 			NRF_LOG_INFO("valeur %s du registre %d, nbr caract %d", s, reg_index, n);
 			NRF_LOG_INFO("fonction %d", RTC_function(reg_index, m_twi));
-			ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
-					if (ff_result != FR_OK)
-					{
-						NRF_LOG_INFO("Write failed.");
-					}
-					else
-					{
-						NRF_LOG_INFO("%d bytes written.", bytes_written);
-					}
+			ff_result = SD_write(&file, s, n, (UINT*) &bytes_written);
 		}		
 		xTaskNotifyGive(xTwiHandle);
 		
@@ -581,15 +573,7 @@ static void vSDCardFunction (void *pvParameter)
 																	, BufferReceive.adc
 										);
 				NRF_LOG_INFO("[%s] de %d", s, n);
-				ff_result = f_write(&file, s, n, (UINT *) &bytes_written); //writing data
-				if (ff_result != FR_OK)
-				{
-					NRF_LOG_INFO("Write failed.");
-				}
-				else
-				{
-					NRF_LOG_INFO("%d bytes written.", bytes_written);
-				}
+				ff_result = SD_write(&file, s, n, (UINT*) &bytes_written);
 			}
 			else
 			{
@@ -599,6 +583,8 @@ static void vSDCardFunction (void *pvParameter)
 		} 
 			// stop is set
 				// closing file
+		  n = sprintf(s,"\n");
+		  ff_result = SD_write(&file, s, n, (UINT*) &bytes_written);
 			ff_result = f_close(&file);
 			if (ff_result != FR_OK)
 			{
@@ -754,7 +740,7 @@ void init()
 	SDcard_init();
 	init_switch_pins();
 	init_imu();
-	init_RTC();
+	init_RTC(m_twi);
 	
 	init_pin_interrupt();
 	nrf_delay_ms(100);

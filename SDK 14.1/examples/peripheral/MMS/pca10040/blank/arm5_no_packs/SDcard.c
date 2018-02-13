@@ -88,6 +88,22 @@ void SDcard_init()
     NRF_LOG_RAW_INFO("");
 }
 
+FRESULT SD_write(FIL* file, const void* buff_to_write, UINT number_char_to_write, UINT* bytes_written)
+{
+	FRESULT ff_result;
+	ff_result = f_write(file, buff_to_write, number_char_to_write, bytes_written); //writing data
+				if (ff_result != FR_OK)
+				{
+					NRF_LOG_INFO("Write failed.");
+				}
+				else
+				{
+					NRF_LOG_INFO("%d bytes written.", *bytes_written);
+				}
+				
+	return ff_result;
+}
+
 char convert(int var)
 {
 	char c= (char) var;

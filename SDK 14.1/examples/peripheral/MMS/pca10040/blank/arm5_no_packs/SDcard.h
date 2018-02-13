@@ -38,6 +38,13 @@ NRF_BLOCK_DEV_SDC_DEFINE(
 void SDcard_init(void);
 
 /*!
+ * @fn SD_write (FIL* file, const void* buff_to_write, UINT number_char_to_write, UINT* bytes_written)
+ * @brief function to write on the SDcard
+ * @param the same as the fatfs write function
+ * @return FRESULT as in fatfs
+ */
+FRESULT SD_write(FIL* file, const void* buff_to_write, UINT number_char_to_write, UINT* bytes_written);
+/*!
 * @fn convert (int)
 * @brief convertion function to adapt to ASCII (unused)
 * @param[in] a int variable to convert

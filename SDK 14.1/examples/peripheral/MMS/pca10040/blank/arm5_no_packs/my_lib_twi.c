@@ -13,7 +13,7 @@ void init_switch_pins(void)
 		nrf_gpio_pin_clear(SWITCH_C);
 }
 
-void init_RTC(void)
+void init_RTC(nrf_drv_twi_t const m_twi)
 {
 		NRF_LOG_INFO("Init_RTC");
 		uint8_t rtc_address = 0x6f;
