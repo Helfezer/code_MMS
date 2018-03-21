@@ -104,9 +104,3 @@ FRESULT SD_write(FIL* file, const void* buff_to_write, UINT number_char_to_write
 	return ff_result;
 }
 
-char convert(int var)
-{
-	char c= (char) var;
-	return c;
-}
-

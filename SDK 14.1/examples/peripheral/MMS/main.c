@@ -62,7 +62,6 @@
 #include "sdk_errors.h"
 #include "app_error.h"
 
-#include "nrf_drv_rtc.h"
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_uart.h"
 
@@ -83,42 +82,9 @@ uint8_t failed;
 #endif
 
 /**
- * @brief RTC instance number used for blinking
- *
- */
-#define BLINK_RTC 2
-
-/**
- * @brief RTC compare channel used
- *
- */
-#define BLINK_RTC_CC 0
-
-/**
- * @brief Number of RTC ticks between interrupts
- */
-#define BLINK_RTC_TICKS   (RTC_US_TO_TICKS(500000ULL, RTC_DEFAULT_CONFIG_FREQUENCY))
-
-/**
- * @brief Reference to ADC reading task.
- */
-static TaskHandle_t  m_ADC_task_handle;
-
-
-/**
- * @brief Reference to LED0 toggling FreeRTOS task.
- */
-//static TaskHandle_t  m_led_toggle_task_handle;
-
-/**
  * @brief Reference to Twi IMU reading task.
  */
 TaskHandle_t  xTwiHandle;
-
-/**
- * @brief Reference to RTC task.
- */
-TaskHandle_t  xRTCHandle;
 
 /**
  * @brief Reference to Reading the Queue task.
@@ -151,26 +117,9 @@ TaskHandle_t  xSDHandle;
 QueueHandle_t xQueue;
 
 /**
- * @brief Semaphore set in RTC event
- */
-static SemaphoreHandle_t m_led_semaphore;
-
-/**
  * @brief Mutex protecting the TWI (I2C)
  */
 static SemaphoreHandle_t m_twi_mutex;
-
-/**
- * @brief RTC configuration
- */
-static nrf_drv_rtc_config_t const m_rtc_config = NRF_DRV_RTC_DEFAULT_CONFIG;
-
-/**
- * @brief RTC instance
- *
- * Instance of the RTC used for led blinking
- */
-static nrf_drv_rtc_t const m_rtc = NRF_DRV_RTC_INSTANCE(BLINK_RTC);
 
 static volatile bool m_xfer_done = true;
 static volatile bool m_set_mode_done = false;
@@ -243,138 +192,6 @@ void vQueueRead(void* pvParameter);
  * @endcond
  */
 
-/*
-static void blink_rtc_handler(nrf_drv_rtc_int_type_t int_type)
-{
-		uint32_t time;
-	
-    BaseType_t yield_req = pdFALSE;
-    ret_code_t err_code;
-    bsp_board_led_invert(BSP_BOARD_LED_1);
-    err_code = nrf_drv_rtc_cc_set(
-        &m_rtc,
-        BLINK_RTC_CC,
-        (nrf_rtc_cc_get(m_rtc.p_reg, BLINK_RTC_CC) + BLINK_RTC_TICKS) & RTC_COUNTER_COUNTER_Msk,
-        true);
-		time = nrf_drv_rtc_counter_get(&m_rtc);
-		//NRF_LOG_INFO("time:%d", time/16384);
-    APP_ERROR_CHECK(err_code);
-
-   *The returned value may be safely ignored, if error is returned it only means that
-   *the semaphore is already given (raised). 
-   UNUSED_VARIABLE(xSemaphoreGiveFromISR(m_led_semaphore, &yield_req));
-   portYIELD_FROM_ISR(yield_req);
-}
-*/
-
-
-/*
- * @brief ADC task entry function.
- *
- * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
- *
-static void ADC_task_function (void * pvParameter)
-{
-	NRF_LOG_INFO("test_task_function");
-    UNUSED_PARAMETER(pvParameter);
-		uint8_t adc_address = 0x6E; // ADC address
-		char reg[10] = {0};					// storage register
-    while (true)
-    {
-			//nrf_drv_twi_tx(&m_twi, reg[0], &reg[1], 1, false);
-			//nrf_delay_us(50);
-			// read register
-			nrf_drv_twi_rx(&m_twi, adc_address, reg, 6);		// read register
-			
-			nrf_delay_ms(100);
-			//NRF_LOG_INFO("Registre %d ", buf[0]);
-			//if(i==31) i = 0;
-			//i++;
-			//nrf_delay_ms(500);
-			NRF_LOG_INFO("Recu: %02x %02x %02x %02x %02x %02x", reg[0], reg[1], reg[2], reg[3], reg[4], reg[5]);
-    }
-
-     Tasks must be implemented to never return... 
-}
-*/
-
-
-/*
- * @fn led_toggle_task_function (void* pvParameter)
- * @brief LED0 task function, make led blink.
- *
- * @param[in] pvParameter   Pointer that will be used as the parameter for the task.
-
-static void led_toggle_task_function (void * pvParameter)
-{
-	NRF_LOG_INFO("led_toggle_task_function");
-    ret_code_t err_code;	
-    err_code = nrf_drv_rtc_init(&m_rtc, &m_rtc_config, blink_rtc_handler);
-    APP_ERROR_CHECK(err_code);
-    err_code = nrf_drv_rtc_cc_set(&m_rtc, BLINK_RTC_CC, BLINK_RTC_TICKS, true);
-    APP_ERROR_CHECK(err_code);
-    nrf_drv_rtc_enable(&m_rtc);
-
-    m_led_semaphore = xSemaphoreCreateBinary();
-    ASSERT(NULL != m_led_semaphore);
-		//TickType_t xDelay = 100;
-    UNUSED_PARAMETER(pvParameter);
-    while (true)
-    {
-        bsp_board_led_invert(BSP_BOARD_LED_0);
-				//vTaskDelay(xDelay);
-        * Wait for the event from the RTC 
-        UNUSED_RETURN_VALUE(xSemaphoreTake(m_led_semaphore, portMAX_DELAY));
-				
-    }
-
-     Tasks must be implemented to never return... 
-}
-*/
-/*
-static void RTC_task_function(void * pvParameter)
-{
-		//NRF_LOG_INFO("RTC_task_function");
-    UNUSED_PARAMETER(pvParameter);
-		uint8_t rtc_address = 0x6f;
-		uint8_t reg[5];
-		reg[0] = 0x00;
-		reg[1] = 0x80; //seconds
-		reg[2] = 0x00; //minutes
-		reg[3] = 0x03; //RTCWKDAY
-		reg[4] = 0x09; //VBATEN = 1
-		uint8_t rtc[1] = {0};
-		//nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 1, false); // seconde to 00 (including CH)
-		//nrf_delay_us(100);
-		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[0], 2, false); // register seconds
-		nrf_delay_us(100);
-		nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);						// read seconds
-		nrf_delay_ms(100);
-		
-		nrf_drv_twi_tx(&m_twi, rtc_address, &reg[3], 2, false); // register seconds
-		nrf_delay_us(100);
-		
-    while(true)
-    {			
-			nrf_drv_twi_tx(&m_twi, rtc_address, &reg[2], 1, false); // register seconds
-			nrf_delay_us(100);
-			nrf_drv_twi_rx(&m_twi, rtc_address, &rtc[0], 1);						// read seconds
-			NRF_LOG_INFO("Recu: %02x", rtc[0]);
-			
-			nrf_delay_ms(500);
-			
-			NRF_LOG_INFO("---------------------------------------------------------------------------------");
-			
-			//NRF_LOG_INFO("Registre %d ", buf[0]);
-			//if(i==31) i = 0;
-			//i++;
-			//nrf_delay_ms(500);
-    }
-
-    // Tasks must be implemented to never return... 
-}
-*/
-
 /*!
  * @fn start_task_function (void *pvParameter)
  * @brief Start task function.
@@ -428,7 +245,7 @@ void vTwiFunction (void *pvParameter)
 	uint16_t adc_buf[1] = {0};		//buffer for adc values
 	
 	IMU imu_list[NB_IMU];					// IMU struct creation	
-	const TickType_t xDelay = 80;	// set sampling speed
+	const TickType_t xDelay = 10;	// set sampling speed
 	
 	int j = 0; 										//imu id index
 	int i = 0; 										//imu register id
@@ -759,10 +576,6 @@ int main(void)
 	  ASSERT(NULL != m_twi_mutex);
 		
     ret_code_t err_code;
-		// Configure LED-pins as outputs
-//		bsp_board_leds_init();
-//		bsp_board_buttons_init();
-
 	
 		//init debug
 		APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
@@ -777,17 +590,7 @@ int main(void)
     err_code = nrf_drv_clock_init();
     APP_ERROR_CHECK(err_code);
 	  /* Create task for Starting all system */
-		/*
-		xReturned = xTaskCreate(RTC_task_function, "RTC", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xRTCHandle);
-		if (xReturned == pdPASS)
-		{
-			NRF_LOG_INFO("RTC task created");
-		}
-		else
-		{
-			NRF_LOG_INFO("Unable to create RTC task");
-		}
-		*/
+
 		xReturned = xTaskCreate(start_task_function, "STR1", configMINIMAL_STACK_SIZE + 200, NULL, 2, &xStartHandle);
 		if (xReturned == pdPASS)
 		{
@@ -808,20 +611,7 @@ int main(void)
 			NRF_LOG_INFO("Unable to create stoping task");
 		}
 		
-    // Create task for LED0 blinking with priority set to 2
-		/*
-		xReturned = xTaskCreate(led_toggle_task_function, "LED0", configMINIMAL_STACK_SIZE + 200, NULL, 4, &m_led_toggle_task_handle);
-		if (xReturned == pdPASS)
-		{
-			NRF_LOG_INFO("Led task created");
-		}
-		else
-		{
-			NRF_LOG_INFO("Unable to create led task");
-		}
-		*/
 		//Task reading IMUs 
-
 		xReturned = xTaskCreate(vTwiFunction, "T1", configMINIMAL_STACK_SIZE + 200, (void*) xQueue, 4, &xTwiHandle );
 		if (xReturned == pdPASS)
 		{
@@ -841,17 +631,7 @@ int main(void)
 		{
 			NRF_LOG_INFO("Unable to create SD task");
 		}
-/*
-		xReturned = xTaskCreate(ADC_task_function, "ADC1", configMINIMAL_STACK_SIZE + 200, (void*) NULL, 3, &m_ADC_task_handle );
-		if (xReturned == pdPASS)
-		{
-			NRF_LOG_INFO("ADC task write created");
-		}
-		else
-		{
-			NRF_LOG_INFO("Unable to create ADC task");
-		}
-*/
+
     /* Activate deep sleep mode */
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 

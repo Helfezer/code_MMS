@@ -38,7 +38,7 @@
 /*
  * Switch macros 
  */
-#define NB_IMU 1
+#define NB_IMU 3
 
 /*
  * MPU registers 
